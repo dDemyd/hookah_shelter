@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Сховище — Конструктор кальянних міксів
 
-## Getting Started
+Веб-додаток для бару "Сховище" (Біла Церква). Гість сканує QR на столику,
+збирає кальянний мікс або обирає фірмовий, надсилає замовлення. Кальянщик
+отримує сповіщення в Telegram, готує, відмічає статуси.
 
-First, run the development server:
+## Стек
+
+- Next.js 16 (App Router, TypeScript)
+- Tailwind CSS 4 + shadcn/ui (base-ui variant)
+- Supabase (Postgres + Auth + Realtime + Storage)
+- Zustand (стан конструктора), TanStack Query (серверні дані)
+- react-hook-form + zod (форми)
+- lucide-react (іконки)
+- Telegram Bot API (прямі HTTP-виклики з API routes)
+
+## Початок роботи
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # заповнити Supabase + Telegram ключі
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Структура
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+app/
+  (guest)/         — гостьова частина (каталог, мікс, пресети, замовлення)
+  admin/           — адмінка (дашборд, CRUD, статистика)
+  api/             — POST /orders, /telegram/webhook, /stats/popular, ...
+lib/
+  supabase/        — browser + server + service-role клієнти
+  telegram/        — sendMessage, format, callback
+  stores/          — Zustand mix-store
+  utils/           — cn, calculateStrength, generateShortCode
+  constants.ts     — статуси замовлень, ліміти
+components/ui/     — shadcn компоненти
+supabase/migrations/ — SQL міграції (заповнюється на етапі 2)
+scripts/           — register-telegram-webhook.ts і т.п.
+design-reference/  — handoff bundle з Claude Design (gitignored)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## База даних
 
-## Learn More
+Міграція — у [`supabase/migrations/20260524000000_initial_schema.sql`](supabase/migrations/20260524000000_initial_schema.sql),
+seed — у [`supabase/seed.sql`](supabase/seed.sql).
 
-To learn more about Next.js, take a look at the following resources:
+### Локальний Supabase (Docker)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+brew install supabase/tap/supabase    # одноразово
+npm run db:start                       # підіймає Postgres+Studio+Auth+Storage у Docker
+npm run db:reset                       # застосовує міграції + seed
+npm run db:types                       # генерує lib/supabase/types.ts
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Local Studio: http://127.0.0.1:54323.
+Після `db:start` він покаже `anon` та `service_role` ключі — підстав їх у `.env.local`.
 
-## Deploy on Vercel
+### Віддалений Supabase (Production)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+supabase login
+supabase link --project-ref <ref>
+npm run db:push                        # застосовує НЕзастосовані міграції
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Seed дані для production застосовуються вручну через Supabase Studio (SQL editor) —
+`db:reset` не використовуємо на production бо він стирає дані.
+
+## Telegram
+
+Сповіщення нових замовлень і управління статусом через Telegram Bot API.
+
+**Один раз** для production:
+
+1. У @BotFather створи бота, скопіюй токен → `TELEGRAM_BOT_TOKEN`
+2. Додай бота в груповий чат бару, через [@getidsbot](https://t.me/getidsbot) дізнайся chat_id → `TELEGRAM_NOTIFICATION_CHAT_ID` (буде від'ємне число для груп)
+3. Згенеруй випадковий рядок (e.g. `openssl rand -hex 32`) → `TELEGRAM_WEBHOOK_SECRET`
+4. Виклади на Vercel з усіма змінними, переконайся що `NEXT_PUBLIC_APP_URL` вказує на production-домен
+5. Зареєструй webhook: `npm run tg:webhook:register`
+6. Перевір: створи тестове замовлення — у чат прилетить повідомлення з кнопками
+
+Локально webhook не зареєструвати (Telegram не достукається до `localhost`).
+Для розробки callback-логіки використовуй [ngrok](https://ngrok.com/) або деплой на preview-гілку.
+
+Видалити webhook: `npm run tg:webhook:delete`.
+
+## Етапи розробки
+
+1. ✅ **Setup** — каркас Next.js, dependencies, shadcn, env, заглушки.
+2. ✅ **БД** — міграція + RLS + триггери + seed (потребує `supabase start` або `db push` для застосування).
+3. ✅ **Types** — згенеровано з реальної БД.
+4. ✅ **Дизайн + гостьовий UI** — головна, каталог, конструктор, фірмові, замовлення.
+5. ✅ **API routes** — `POST /api/orders`, `PATCH /api/orders/[id]/status`.
+6. ✅ **Telegram** — нотифікації, webhook, форматування, скрипт реєстрації.
+7. ⏳ **Адмінка** — login, Kanban, CRUD, stats. (Pages існують як заглушки.)
+8. ⏳ **Деплой** — Vercel + домен `hookah.shelterbc.top`.
