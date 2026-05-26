@@ -22,6 +22,9 @@ export type OrderView = {
   status: OrderStatus;
   serviceType: ServiceType;
   price: number;
+  isOverpack: boolean;
+  coolIntensity: number;
+  depositAmount: number;
   statusChangedAt: string;
   createdAt: string;
   ingredients: OrderIngredientView[];
@@ -36,6 +39,9 @@ type OrderRow = {
   status: OrderStatus;
   service_type: ServiceType;
   price: number;
+  is_overpack: boolean;
+  cool_intensity: number;
+  deposit_amount: number;
   status_changed_at: string;
   created_at: string;
   order_ingredients: {
@@ -52,7 +58,7 @@ type OrderRow = {
 };
 
 const SELECT_COLS =
-  "id,short_code,table_id,guest_name,notes,status,service_type,price,status_changed_at,created_at,order_ingredients(id,tobacco_id,percentage,tobacco_snapshot)";
+  "id,short_code,table_id,guest_name,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,status_changed_at,created_at,order_ingredients(id,tobacco_id,percentage,tobacco_snapshot)";
 
 function mapRow(row: OrderRow): OrderView {
   return {
@@ -64,6 +70,9 @@ function mapRow(row: OrderRow): OrderView {
     status: row.status,
     serviceType: row.service_type,
     price: row.price,
+    isOverpack: row.is_overpack,
+    coolIntensity: row.cool_intensity,
+    depositAmount: row.deposit_amount,
     statusChangedAt: row.status_changed_at,
     createdAt: row.created_at,
     ingredients: row.order_ingredients.map((ingredient) => ({

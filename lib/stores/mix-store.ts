@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
+  COOL_MAX_INTENSITY,
+  COOL_MIN_INTENSITY,
   MAX_INGREDIENTS_PER_MIX,
   MIN_PERCENT_PER_SLOT,
 } from "@/lib/constants";
@@ -13,10 +15,20 @@ export type MixSlot = {
 type MixStore = {
   slots: MixSlot[];
   tableId: number | null;
+  /** Overpack: thicker bowl, +grams over the base 18 g, slight strength bump. */
+  isOverpack: boolean;
+  /** Холодок add-on — free menthol/cool element layered on top of the mix. */
+  isCool: boolean;
+  /** Intensity of Холодок on a 1..COOL_MAX_INTENSITY scale (only meaningful
+   *  when isCool=true). Persisted across remounts. */
+  coolIntensity: number;
   addTobacco: (tobaccoId: string) => void;
   removeTobacco: (tobaccoId: string) => void;
   setPercentage: (tobaccoId: string, pct: number) => void;
   setTableId: (tableId: number | null) => void;
+  setOverpack: (isOverpack: boolean) => void;
+  setCool: (isCool: boolean) => void;
+  setCoolIntensity: (intensity: number) => void;
   clear: () => void;
   /** Convenience: true if a tobacco is already in the mix. */
   hasTobacco: (tobaccoId: string) => boolean;
@@ -115,6 +127,9 @@ export const useMixStore = create<MixStore>()(
     (set, get) => ({
       slots: [],
       tableId: null,
+      isOverpack: false,
+      isCool: false,
+      coolIntensity: 3,
       addTobacco: (tobaccoId) =>
         set((state) => {
           if (state.slots.find((s) => s.tobaccoId === tobaccoId)) return state;
@@ -137,7 +152,17 @@ export const useMixStore = create<MixStore>()(
           slots: rebalanceFixedSlot(state.slots, tobaccoId, pct),
         })),
       setTableId: (tableId) => set({ tableId }),
-      clear: () => set({ slots: [] }),
+      setOverpack: (isOverpack) => set({ isOverpack }),
+      setCool: (isCool) => set({ isCool }),
+      setCoolIntensity: (intensity) =>
+        set({
+          coolIntensity: Math.min(
+            COOL_MAX_INTENSITY,
+            Math.max(COOL_MIN_INTENSITY, Math.round(intensity)),
+          ),
+        }),
+      clear: () =>
+        set({ slots: [], isOverpack: false, isCool: false, coolIntensity: 3 }),
       hasTobacco: (tobaccoId) =>
         get().slots.some((s) => s.tobaccoId === tobaccoId),
     }),
@@ -145,7 +170,13 @@ export const useMixStore = create<MixStore>()(
       name: "shelter.mix",
       storage: createJSONStorage(() => localStorage),
       // Only persist serializable state — methods are restored from the factory.
-      partialize: (s) => ({ slots: s.slots, tableId: s.tableId }),
+      partialize: (s) => ({
+        slots: s.slots,
+        tableId: s.tableId,
+        isOverpack: s.isOverpack,
+        isCool: s.isCool,
+        coolIntensity: s.coolIntensity,
+      }),
     },
   ),
 );

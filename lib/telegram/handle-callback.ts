@@ -1,9 +1,9 @@
 // Telegram callback_query handler. Receives "accept:<id>" / "preparing:<id>" /
-// "ready:<id>" / "delivered:<id>" / "cancel:<id>" from the inline keyboard,
-// transitions the order, and edits the original message in place.
+// "ready:<id>" / "delivered:<id>" / "closed:<id>" / "cancel:<id>" from the
+// inline keyboard, transitions the order, and edits the original message.
 
 import "server-only";
-import { ORDER_STATUSES, type OrderStatus } from "@/lib/constants";
+import { ORDER_STATUSES, type OrderStatus, type ServiceType } from "@/lib/constants";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import {
   answerCallbackQuery,
@@ -38,6 +38,7 @@ type CallbackAction =
   | "preparing"
   | "ready"
   | "delivered"
+  | "closed"
   | "cancel";
 
 const ACTION_TO_STATUS: Record<CallbackAction, OrderStatus> = {
@@ -45,6 +46,7 @@ const ACTION_TO_STATUS: Record<CallbackAction, OrderStatus> = {
   preparing: "preparing",
   ready: "ready",
   delivered: "delivered",
+  closed: "closed",
   cancel: "cancelled",
 };
 
@@ -71,8 +73,14 @@ type OrderRow = {
   short_code: string;
   table_id: number | null;
   guest_name: string | null;
+  guest_contact: string | null;
   notes: string | null;
   status: OrderStatus;
+  service_type: ServiceType;
+  price: number;
+  is_overpack: boolean;
+  cool_intensity: number;
+  deposit_amount: number;
   cancelled_reason: string | null;
   telegram_message_id: number | null;
   telegram_chat_id: string | null;
@@ -100,7 +108,7 @@ export async function handleTelegramCallback(
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id,short_code,table_id,guest_name,notes,status,cancelled_reason,telegram_message_id,telegram_chat_id,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
+      "id,short_code,table_id,guest_name,guest_contact,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,cancelled_reason,telegram_message_id,telegram_chat_id,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
     )
     .eq("id", parsed.orderId)
     .maybeSingle();
@@ -167,8 +175,14 @@ export async function handleTelegramCallback(
           shortCode: order.short_code,
           tableId: order.table_id,
           guestName: order.guest_name,
+          guestContact: order.guest_contact,
           notes: order.notes,
           status: nextStatus,
+          serviceType: order.service_type,
+          price: order.price,
+          isOverpack: order.is_overpack,
+          coolIntensity: order.cool_intensity,
+          depositAmount: order.deposit_amount,
           presetName: order.preset_mixes?.name ?? null,
           ingredients,
           actorName,

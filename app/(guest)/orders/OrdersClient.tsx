@@ -9,6 +9,7 @@ import {
   ORDER_STATUS_LABELS,
   SERVICE_TYPE_LABELS,
   type OrderStatus,
+  type ServiceType,
 } from "@/lib/constants";
 import {
   useDraftsStore,
@@ -58,6 +59,11 @@ const STATUS_TONE: Record<
     border: "rgba(126,211,33,0.4)",
   },
   delivered: {
+    color: "#c4a7f7",
+    bg: "rgba(167,139,250,0.12)",
+    border: "rgba(167,139,250,0.4)",
+  },
+  closed: {
     color: "#8c8c8c",
     bg: "rgba(255,255,255,0.04)",
     border: "rgba(255,255,255,0.12)",
@@ -121,7 +127,11 @@ export function OrdersClient() {
     enabled: history.length > 0,
     refetchInterval: 30_000,
   });
-  const orders = ordersQuery.data ?? [];
+  // Hide terminal orders — once a kalyanchik closes (or cancels) an order it
+  // shouldn't keep cluttering the guest's "Замовлення" list.
+  const orders = (ordersQuery.data ?? []).filter(
+    (order) => order.status !== "closed" && order.status !== "cancelled",
+  );
 
   const counts = {
     all: drafts.length + orders.length,
@@ -141,7 +151,7 @@ export function OrdersClient() {
     setOrderingDraft(draft);
   };
 
-  const confirmOrder = (serviceType: "hookah" | "refill") => {
+  const confirmOrder = (serviceType: ServiceType) => {
     setOrderingDraft(null);
     router.push(`/order/new?service=${serviceType}`);
   };
@@ -535,12 +545,6 @@ function DraftCard({
         <div className="mt-3 flex flex-wrap gap-1.5">
           <MiniStat icon="🔥" label="Міц" value={stats.strength} color="#ff4500" />
           <MiniStat icon="💨" label="Дим" value={stats.smoke} color="#a8b3c4" />
-          <MiniStat
-            icon="✦"
-            label="Скл"
-            value={stats.complexity}
-            color="#c98b3c"
-          />
         </div>
 
         <div
@@ -753,20 +757,17 @@ function MiniStat({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Stats: weighted mean strength + smoke; complexity grows with N + category mix.
+// Weighted mean strength + smoke.
 function computeStats(picks: DraftPick[]): {
   strength: number;
   smoke: number;
-  complexity: number;
 } {
-  if (picks.length === 0) return { strength: 0, smoke: 0, complexity: 0 };
+  if (picks.length === 0) return { strength: 0, smoke: 0 };
   const total = picks.reduce((sum, p) => sum + p.pct, 0) || 1;
   const strength =
     picks.reduce((sum, p) => sum + p.strength * p.pct, 0) / total;
   const smoke = picks.reduce((sum, p) => sum + p.smoke * p.pct, 0) / total;
-  const distinctCats = new Set(picks.map((p) => p.category)).size;
-  const complexity = Math.min(5, picks.length + (distinctCats - 1) * 0.5);
-  return { strength, smoke, complexity };
+  return { strength, smoke };
 }
 
 // ─────────────────────────────────────────────────────────────

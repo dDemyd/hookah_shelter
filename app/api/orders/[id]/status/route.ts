@@ -32,10 +32,14 @@ type OrderRow = {
   short_code: string;
   table_id: number | null;
   guest_name: string | null;
+  guest_contact: string | null;
   notes: string | null;
   status: OrderStatus;
   service_type: ServiceType;
   price: number;
+  is_overpack: boolean;
+  cool_intensity: number;
+  deposit_amount: number;
   cancelled_reason: string | null;
   accepted_by: string | null;
   telegram_message_id: number | null;
@@ -100,7 +104,7 @@ export async function PATCH(
   const { data: orderRaw, error: orderError } = await service
     .from("orders")
     .select(
-      "id,short_code,table_id,guest_name,notes,status,service_type,price,cancelled_reason,accepted_by,telegram_message_id,telegram_chat_id,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
+      "id,short_code,table_id,guest_name,guest_contact,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,cancelled_reason,accepted_by,telegram_message_id,telegram_chat_id,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -164,10 +168,14 @@ export async function PATCH(
           shortCode: order.short_code,
           tableId: order.table_id,
           guestName: order.guest_name,
+          guestContact: order.guest_contact,
           notes: order.notes,
           status: nextStatus,
           serviceType: order.service_type,
           price: order.price,
+          isOverpack: order.is_overpack,
+          coolIntensity: order.cool_intensity,
+          depositAmount: order.deposit_amount,
           presetName: order.preset_mixes?.name ?? null,
           ingredients,
           actorName: profile.full_name,

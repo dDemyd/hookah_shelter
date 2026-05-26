@@ -169,11 +169,11 @@ function TobaccoFormBody({
         !payload.brand_id ||
         !payload.name ||
         payload.strength < 1 ||
-        payload.strength > 5 ||
+        payload.strength > 12 ||
         payload.smoke < 1 ||
         payload.smoke > 5
       ) {
-        throw new Error("Заповніть бренд, назву, міцність і димність від 1 до 5.");
+        throw new Error("Заповніть бренд, назву, міцність (1–12) і димність (1–5).");
       }
 
       const query = tobaccoId
@@ -240,7 +240,7 @@ function TobaccoFormBody({
             </div>
             <div className="space-y-2">
               <Label htmlFor="tobacco-strength">Міцність</Label>
-              <Input id="tobacco-strength" type="number" min={1} max={5} value={form.strength} onChange={(event) => setForm((current) => ({ ...current, strength: event.target.value }))} />
+              <Input id="tobacco-strength" type="number" min={1} max={12} value={form.strength} onChange={(event) => setForm((current) => ({ ...current, strength: event.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tobacco-smoke">Димність</Label>

@@ -23,10 +23,21 @@ type OrderRow = {
   short_code: string;
   table_id: number | null;
   guest_name: string | null;
+  guest_contact: string | null;
   notes: string | null;
-  status: "pending" | "accepted" | "preparing" | "ready" | "delivered" | "cancelled";
+  status:
+    | "pending"
+    | "accepted"
+    | "preparing"
+    | "ready"
+    | "delivered"
+    | "closed"
+    | "cancelled";
   service_type: ServiceType;
   price: number;
+  is_overpack: boolean;
+  cool_intensity: number;
+  deposit_amount: number;
   telegram_message_id: number | null;
   preset_mixes: { name: string } | null;
   order_ingredients: {
@@ -55,7 +66,7 @@ export async function POST(request: Request) {
   const { data, error } = await service
     .from("orders")
     .select(
-      "id,short_code,table_id,guest_name,notes,status,service_type,price,telegram_message_id,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
+      "id,short_code,table_id,guest_name,guest_contact,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,telegram_message_id,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
     )
     .eq("id", parsed.data.orderId)
     .maybeSingle();
@@ -81,10 +92,14 @@ export async function POST(request: Request) {
         shortCode: order.short_code,
         tableId: order.table_id,
         guestName: order.guest_name,
+        guestContact: order.guest_contact,
         notes: order.notes,
         status: order.status,
         serviceType: order.service_type,
         price: order.price,
+        isOverpack: order.is_overpack,
+        coolIntensity: order.cool_intensity,
+        depositAmount: order.deposit_amount,
         presetName: order.preset_mixes?.name ?? null,
         ingredients: order.order_ingredients.map((row) => ({
           brand: row.tobacco_snapshot.brand ?? "—",

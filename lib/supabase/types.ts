@@ -106,11 +106,15 @@ export type Database = {
         Row: {
           accepted_by: string | null
           cancelled_reason: string | null
+          cool_intensity: number
           created_at: string
+          deposit_amount: number
           guest_contact: string | null
           guest_id: string | null
           guest_name: string | null
           id: string
+          is_overpack: boolean
+          last_coal_reminder_at: string | null
           notes: string | null
           preset_mix_id: string | null
           price: number
@@ -126,11 +130,15 @@ export type Database = {
         Insert: {
           accepted_by?: string | null
           cancelled_reason?: string | null
+          cool_intensity?: number
           created_at?: string
+          deposit_amount?: number
           guest_contact?: string | null
           guest_id?: string | null
           guest_name?: string | null
           id?: string
+          is_overpack?: boolean
+          last_coal_reminder_at?: string | null
           notes?: string | null
           preset_mix_id?: string | null
           price?: number
@@ -146,11 +154,15 @@ export type Database = {
         Update: {
           accepted_by?: string | null
           cancelled_reason?: string | null
+          cool_intensity?: number
           created_at?: string
+          deposit_amount?: number
           guest_contact?: string | null
           guest_id?: string | null
           guest_name?: string | null
           id?: string
+          is_overpack?: boolean
+          last_coal_reminder_at?: string | null
           notes?: string | null
           preset_mix_id?: string | null
           price?: number
@@ -402,6 +414,7 @@ export type Database = {
     }
     Functions: {
       generate_order_short_code: { Args: never; Returns: string }
+      has_staff_role: { Args: { required_role: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

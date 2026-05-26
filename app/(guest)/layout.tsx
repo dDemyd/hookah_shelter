@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { BottomNav } from "./components/BottomNav";
+import { DisclaimerGate } from "./components/DisclaimerGate";
 import { SmokeLayer } from "./components/SmokeLayer";
 import { TableParamCapture } from "./components/TableParamCapture";
 
@@ -18,6 +19,7 @@ export default function GuestLayout({ children }: { children: ReactNode }) {
         <TableParamCapture />
       </Suspense>
       <BottomNav />
+      <DisclaimerGate />
       <Toaster
         position="bottom-center"
         offset={108}

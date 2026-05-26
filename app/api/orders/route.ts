@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  COOL_MAX_INTENSITY,
+  DAY_LOANER_DEPOSIT_UAH,
+  DAY_LOANER_PRICE_UAH,
+  MAX_INGREDIENTS_LIMIT,
   MAX_INGREDIENTS_PER_MIX,
+  MIN_INGREDIENTS_LIMIT,
+  OVERPACK_PRICE_UAH,
   SERVICE_TYPES,
   SERVICE_TYPE_PRICES,
 } from "@/lib/constants";
@@ -21,8 +27,16 @@ const createOrderSchema = z
     guestContact: z.string().trim().max(80).optional().default(""),
     notes: z.string().trim().max(500).optional().default(""),
     serviceType: z.enum(SERVICE_TYPES).optional().default("hookah"),
+    isOverpack: z.boolean().optional().default(false),
+    coolIntensity: z
+      .number()
+      .int()
+      .min(0)
+      .max(COOL_MAX_INTENSITY)
+      .optional()
+      .default(0),
     presetMixId: z.string().uuid().optional(),
-    ingredients: z.array(ingredientSchema).max(MAX_INGREDIENTS_PER_MIX).optional(),
+    ingredients: z.array(ingredientSchema).max(MAX_INGREDIENTS_LIMIT).optional(),
   })
   .superRefine((value, ctx) => {
     const hasPreset = Boolean(value.presetMixId);
@@ -109,6 +123,62 @@ export async function POST(request: Request) {
   const supabase = createSupabaseServiceClient();
   const shortCode = await generateUniqueShortCode(supabase);
 
+  // Pull current prices from app_settings — admin can tweak without a deploy.
+  // Falls back to constants so a missing key never breaks order creation.
+  const { data: priceSettings } = await supabase
+    .from("app_settings")
+    .select("key,value")
+    .in("key", [
+      "default_price",
+      "refill_price",
+      "overpack_price",
+      "accepting_orders",
+      "max_ingredients_per_mix",
+      "day_loaner_price",
+      "day_loaner_deposit",
+    ]);
+
+  const settingsMap = new Map(
+    (priceSettings ?? []).map((row) => [row.key, row.value]),
+  );
+  if (settingsMap.get("accepting_orders") === false) {
+    return NextResponse.json(
+      { error: "Замовлення тимчасово не приймаються." },
+      { status: 423 },
+    );
+  }
+  const rawMax = settingsMap.get("max_ingredients_per_mix");
+  const maxIngredientsRaw =
+    typeof rawMax === "number" ? rawMax : Number(rawMax);
+  const maxIngredients = Number.isFinite(maxIngredientsRaw)
+    ? Math.min(MAX_INGREDIENTS_LIMIT, Math.max(MIN_INGREDIENTS_LIMIT, maxIngredientsRaw))
+    : MAX_INGREDIENTS_PER_MIX;
+  if (body.ingredients && body.ingredients.length > maxIngredients) {
+    return NextResponse.json(
+      { error: `Максимум ${maxIngredients} тютюнів у міксі.` },
+      { status: 400 },
+    );
+  }
+  const settingNumber = (key: string, fallback: number): number => {
+    const raw = settingsMap.get(key);
+    const n = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
+  };
+  // day_loaner is priced at the full hookah rate (the kalyud itself is a
+  // loaner — guest pays for the mix). The deposit is tracked separately.
+  const servicePrice =
+    body.serviceType === "refill"
+      ? settingNumber("refill_price", SERVICE_TYPE_PRICES.refill)
+      : body.serviceType === "day_loaner"
+        ? settingNumber("day_loaner_price", DAY_LOANER_PRICE_UAH)
+        : settingNumber("default_price", SERVICE_TYPE_PRICES.hookah);
+  const overpackPrice = settingNumber("overpack_price", OVERPACK_PRICE_UAH);
+  const totalPrice = servicePrice + (body.isOverpack ? overpackPrice : 0);
+  const depositAmount =
+    body.serviceType === "day_loaner"
+      ? settingNumber("day_loaner_deposit", DAY_LOANER_DEPOSIT_UAH)
+      : 0;
+
   let ingredients = body.ingredients ?? [];
   if (body.presetMixId) {
     const { data, error } = await supabase
@@ -167,7 +237,10 @@ export async function POST(request: Request) {
       notes: body.notes || null,
       preset_mix_id: body.presetMixId ?? null,
       service_type: body.serviceType,
-      price: SERVICE_TYPE_PRICES[body.serviceType],
+      is_overpack: body.isOverpack,
+      cool_intensity: body.coolIntensity,
+      deposit_amount: depositAmount,
+      price: totalPrice,
     })
     .select("id,short_code")
     .single();

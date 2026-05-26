@@ -9,7 +9,11 @@ export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   accepted: ["preparing", "cancelled"],
   preparing: ["ready", "cancelled"],
   ready: ["delivered", "cancelled"],
-  delivered: [],
+  // 'delivered' = the guest received the hookah and is smoking. The kalyanchik
+  // closes the order when the guest leaves the table. Cancellation is still
+  // possible (e.g. the guest complains and walks out without paying).
+  delivered: ["closed", "cancelled"],
+  closed: [],
   cancelled: [],
 };
 

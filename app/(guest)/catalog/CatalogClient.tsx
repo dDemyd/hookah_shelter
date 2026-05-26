@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { MAX_INGREDIENTS_PER_MIX } from "@/lib/constants";
 import { useMixStore } from "@/lib/stores/mix-store";
+import { useMaxIngredientsPerMix } from "@/lib/hooks/use-max-ingredients";
 import {
   CAT_LABEL,
   CATALOG_CATEGORIES,
@@ -26,13 +26,14 @@ import { MixFAB } from "./components/MixFAB";
 import { OptionSheet } from "./components/OptionSheet";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { StrengthRangeSlider } from "./components/StrengthRangeSlider";
+import { MAX_STRENGTH } from "@/lib/constants";
 
 export function CatalogClient() {
   const params = useSearchParams();
   const [cat, setCat] = useState<string>(() => params.get("cat") ?? "all");
   const [newOnly, setNewOnly] = useState<boolean>(() => params.get("new") === "1");
   const [brand, setBrand] = useState<string>("Усі");
-  const [strRange, setStrRange] = useState<[number, number]>([1, 5]);
+  const [strRange, setStrRange] = useState<[number, number]>([1, MAX_STRENGTH]);
   const [sortBy, setSortBy] = useState<SortBy>("popular");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -60,6 +61,7 @@ export function CatalogClient() {
 
   const slots = useMixStore((s) => s.slots);
   const addTobacco = useMixStore((s) => s.addTobacco);
+  const maxIngredients = useMaxIngredientsPerMix();
   const isPicked = (id: string) => slots.some((s) => s.tobaccoId === id);
 
   const brands = useMemo(
@@ -109,8 +111,8 @@ export function CatalogClient() {
       toast(`${item.uname} вже у міксі`);
       return;
     }
-    if (slots.length >= MAX_INGREDIENTS_PER_MIX) {
-      toast(`Максимум ${MAX_INGREDIENTS_PER_MIX} тютюни — звільни слот`);
+    if (slots.length >= maxIngredients) {
+      toast(`Максимум ${maxIngredients} тютюни — звільни слот`);
       return;
     }
     addTobacco(item.id);
@@ -121,14 +123,14 @@ export function CatalogClient() {
     cat !== "all" ||
     brand !== "Усі" ||
     strRange[0] !== 1 ||
-    strRange[1] !== 5 ||
+    strRange[1] !== MAX_STRENGTH ||
     query !== "" ||
     newOnly;
 
   const resetFilters = () => {
     setCat("all");
     setBrand("Усі");
-    setStrRange([1, 5]);
+    setStrRange([1, MAX_STRENGTH]);
     setQuery("");
     setNewOnly(false);
   };
@@ -177,14 +179,14 @@ export function CatalogClient() {
               🔥 Міцність
             </span>
             <span className="text-[12px] font-bold whitespace-nowrap text-[#ff8a3d]">
-              {strRange[0]} – {strRange[1]} з 5
+              {strRange[0]} – {strRange[1]} з {MAX_STRENGTH}
             </span>
           </div>
           <StrengthRangeSlider
             value={strRange}
             onChange={setStrRange}
             min={1}
-            max={5}
+            max={MAX_STRENGTH}
           />
         </div>
       </div>

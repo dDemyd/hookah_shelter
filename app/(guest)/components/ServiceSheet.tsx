@@ -10,24 +10,19 @@ import {
 import {
   SERVICE_TYPES,
   SERVICE_TYPE_LABELS,
-  SERVICE_TYPE_PRICES,
   type ServiceType,
 } from "@/lib/constants";
-
-const DESCRIPTIONS: Record<ServiceType, string> = {
-  hookah:
-    "Повний сервіс: чаша, колба, кальянщик. Подача на стіл за 5 хвилин.",
-  refill:
-    "Тільки заміна чаші — для гостей, які вже мають кальян на столі.",
-};
+import { usePublicSettings } from "@/lib/hooks/use-max-ingredients";
 
 const ICONS: Record<ServiceType, string> = {
   hookah: "🪔",
   refill: "🍃",
+  day_loaner: "🎒",
 };
 
 type Props = {
   open: boolean;
+  isOverpack?: boolean;
   onClose: () => void;
   onConfirm: (serviceType: ServiceType) => void;
 };
@@ -43,8 +38,25 @@ export function ServiceSheet(props: Props) {
   );
 }
 
-function ServiceSheetBody({ onClose, onConfirm }: Props) {
+function ServiceSheetBody({ isOverpack = false, onClose, onConfirm }: Props) {
   const [selected, setSelected] = useState<ServiceType>("hookah");
+  const settings = usePublicSettings();
+  const descriptions: Record<ServiceType, string> = {
+    hookah:
+      "Повний сервіс: чаша, колба, кальянщик. Подача на стіл за 10 хвилин.",
+    refill: "Мікс з собою - якщо є бажання покурити кальян вдома.",
+    day_loaner: `Беріть кальян з собою. Залог ${settings.dayLoanerDeposit} ₴ (повертається) + вартість міксу. У комплекті: кальян, чаша, шипці, калауд тощо.`,
+  };
+  const priceFor = (id: ServiceType): number => {
+    const base =
+      id === "hookah"
+        ? settings.defaultPrice
+        : id === "refill"
+          ? settings.refillPrice
+          : settings.dayLoanerPrice + settings.dayLoanerDeposit;
+    return base + (isOverpack ? settings.overpackPrice : 0);
+  };
+
   return (
     <>
       <SheetContent
@@ -75,6 +87,7 @@ function ServiceSheetBody({ onClose, onConfirm }: Props) {
         <div className="flex flex-col gap-2 px-4 pt-3.5 pb-1">
           {SERVICE_TYPES.map((id) => {
             const active = id === selected;
+            const price = priceFor(id);
             return (
               <button
                 key={id}
@@ -106,12 +119,12 @@ function ServiceSheetBody({ onClose, onConfirm }: Props) {
                       className="text-[16px] font-extrabold tracking-[-0.3px] tabular-nums"
                       style={{ color: active ? "#ff8a3d" : "#aaa" }}
                     >
-                      {SERVICE_TYPE_PRICES[id]}
+                      {price}
                       <span className="text-[11px] opacity-70">₴</span>
                     </div>
                   </div>
                   <div className="text-[12px] leading-snug text-[#888]">
-                    {DESCRIPTIONS[id]}
+                    {descriptions[id]}
                   </div>
                 </div>
                 <div

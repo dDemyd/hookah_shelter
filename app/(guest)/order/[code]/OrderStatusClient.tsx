@@ -3,7 +3,11 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ORDER_STATUS_LABELS, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUS_LABELS,
+  SERVICE_TYPE_LABELS,
+  type OrderStatus,
+} from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchOrderByCode } from "../order-data";
 
@@ -13,6 +17,7 @@ const STATUS_STEPS: OrderStatus[] = [
   "preparing",
   "ready",
   "delivered",
+  "closed",
 ];
 
 const STATUS_COPY: Record<OrderStatus, string> = {
@@ -20,7 +25,8 @@ const STATUS_COPY: Record<OrderStatus, string> = {
   accepted: "Замовлення прийнято. Скоро почнемо готувати.",
   preparing: "Кальян готується. Орієнтовно 15 хвилин.",
   ready: "Кальян готовий і скоро буде у вас.",
-  delivered: "Замовлення віддано. Гарного диму.",
+  delivered: "Кальян у вас. Гарного диму.",
+  closed: "Замовлення закрите. Дякуємо, що завітали.",
   cancelled: "Замовлення скасовано. Зверніться до персоналу.",
 };
 
@@ -102,11 +108,55 @@ export function OrderStatusClient({ code }: { code: string }) {
         <p className="mt-4 text-[14px] leading-6 text-[#aaa]">
           {STATUS_COPY[order.status]}
         </p>
-        {order.tableId && (
-          <div className="mt-3 text-[13px] font-bold text-white/80">
-            Стіл №{order.tableId}
-          </div>
-        )}
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+          <span className="font-bold text-white/80">
+            {SERVICE_TYPE_LABELS[order.serviceType]}
+          </span>
+          <span className="text-[#ff8a3d]">
+            <span className="text-[16px] font-extrabold">{order.price}</span>₴
+          </span>
+          {order.tableId && (
+            <span className="font-bold text-white/80">
+              Стіл №{order.tableId}
+            </span>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {order.isOverpack && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-[0.4px] text-[#ff8a3d]"
+              style={{
+                background: "rgba(255,69,0,0.1)",
+                border: "1px solid rgba(255,69,0,0.4)",
+              }}
+            >
+              ⚡ Оверпак
+            </span>
+          )}
+          {order.coolIntensity > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-[0.4px]"
+              style={{
+                background: "rgba(120,180,255,0.1)",
+                border: "1px solid rgba(120,180,255,0.4)",
+                color: "#7ec8ff",
+              }}
+            >
+              ❄ Холодок · {order.coolIntensity}/5
+            </span>
+          )}
+          {order.serviceType === "day_loaner" && order.depositAmount > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-[0.4px] text-[#ff8a3d]"
+              style={{
+                background: "rgba(255,69,0,0.1)",
+                border: "1px solid rgba(255,69,0,0.4)",
+              }}
+            >
+              🎒 Залог {order.depositAmount}₴ (повертається)
+            </span>
+          )}
+        </div>
       </div>
 
       <section className="mt-6">

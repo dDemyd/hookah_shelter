@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  DEFAULT_PRICE_UAH,
-  MAX_INGREDIENTS_PER_MIX,
+  COOL_MAX_INTENSITY,
+  COOL_MIN_INTENSITY,
+  MAX_STRENGTH,
   MIN_PERCENT_PER_SLOT,
   type ServiceType,
 } from "@/lib/constants";
+import { usePublicSettings } from "@/lib/hooks/use-max-ingredients";
 import { useMixStore, type MixSlot } from "@/lib/stores/mix-store";
 import { calculateStrength } from "@/lib/utils/calculate-strength";
 import {
@@ -26,170 +28,202 @@ import { useDraftsStore } from "@/lib/stores/drafts-store";
 type Pick = CatalogTobacco & { pct: number };
 
 function HookahVisualizer({ picks }: { picks: Pick[] }) {
+  const total = picks.reduce((sum, pick) => sum + pick.pct, 0);
   const active = picks.length > 0;
   const cavityX = 116;
-  const cavityY = 60;
+  const cavityY = 42;
   const cavityW = 48;
-  const cavityH = 30;
+  const cavityH = 28;
   const stripes = picks.map((pick, index) => {
-    const h = (pick.pct / 100) * cavityH;
+    const h = total > 0 ? (pick.pct / 100) * cavityH : 0;
     const previousHeight = picks
       .slice(0, index)
       .reduce((sum, previous) => sum + (previous.pct / 100) * cavityH, 0);
     return { ...pick, y: cavityY + cavityH - previousHeight - h, h };
   });
+  const dominant =
+    picks.length > 0
+      ? picks.reduce((a, b) => (a.pct >= b.pct ? a : b)).color
+      : null;
 
   return (
-    <div className="relative flex h-[300px] w-full items-end justify-center">
-      <div className="pointer-events-none absolute bottom-0 left-1/2 h-20 w-[260px] -translate-x-1/2">
-        <svg width="100%" height="100%" viewBox="0 0 260 80">
-          <ellipse cx="130" cy="60" rx="125" ry="14" fill="none" stroke="rgba(255,69,0,0.06)" />
-          <ellipse cx="130" cy="60" rx="100" ry="11" fill="none" stroke="rgba(255,69,0,0.08)" />
+    <div className="relative flex h-[360px] w-full items-end justify-center overflow-visible">
+      <div className="pointer-events-none absolute bottom-[-6px] left-1/2 h-[70px] w-[280px] -translate-x-1/2">
+        <svg width="100%" height="100%" viewBox="0 0 280 70">
+          <defs>
+            <radialGradient id="floor-glow" cx="50%" cy="60%" r="55%">
+              <stop offset="0%" stopColor="rgba(255,140,80,0.18)" />
+              <stop offset="60%" stopColor="rgba(255,69,0,0.06)" />
+              <stop offset="100%" stopColor="rgba(255,69,0,0)" />
+            </radialGradient>
+          </defs>
           <ellipse
-            cx="130"
-            cy="60"
-            rx="50"
-            ry="7"
-            fill={active ? "rgba(255,69,0,0.18)" : "rgba(255,69,0,0.05)"}
+            cx="140"
+            cy="42"
+            rx="120"
+            ry="20"
+            fill={active ? "url(#floor-glow)" : "rgba(0,0,0,0.5)"}
+            style={{ transition: "fill 600ms ease" }}
+          />
+          <ellipse
+            cx="140"
+            cy="46"
+            rx="60"
+            ry="6"
+            fill="rgba(0,0,0,0.55)"
+            style={{ filter: "blur(2px)" }}
           />
         </svg>
       </div>
 
-      {active && (
-        <div className="pointer-events-none absolute top-0 left-1/2 h-[120px] w-[240px] -translate-x-1/2">
-          <svg viewBox="0 0 240 160" width="100%" height="100%">
-            <defs>
-              <radialGradient id="mixer-puff-grad">
-                <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                <stop offset="50%" stopColor="rgba(255,180,140,0.18)" />
-                <stop offset="100%" stopColor="rgba(255,69,0,0)" />
-              </radialGradient>
-            </defs>
-            {[96, 120, 144, 108, 132].map((x, i) => (
+      <div
+        className="pointer-events-none absolute top-[-20px] left-1/2 h-[130px] w-[240px] -translate-x-1/2"
+        style={{
+          opacity: active ? 1 : 0,
+          transition: "opacity 800ms ease",
+        }}
+      >
+        <SmokeWisps />
+      </div>
+
+      {active ? (
+        <div className="pointer-events-none absolute top-0 left-1/2 h-[200px] w-[240px] -translate-x-1/2">
+          <svg viewBox="0 0 240 200" width="100%" height="100%">
+            {[
+              { x: 100, delay: 0, r: 1.4 },
+              { x: 118, delay: 2.1, r: 1 },
+              { x: 140, delay: 1.2, r: 1.6 },
+              { x: 158, delay: 3.3, r: 1.1 },
+              { x: 110, delay: 4.4, r: 1.2 },
+            ].map((ember, index) => (
               <circle
-                key={i}
-                cx={x}
-                cy="130"
-                r={i === 1 ? 27 : 19}
-                fill="url(#mixer-puff-grad)"
+                key={index}
+                cx={ember.x}
+                cy="40"
+                r={ember.r}
+                fill="#ffbf80"
                 style={{
-                  animation: `rise-puff 4.5s ease-out ${i * 0.55}s infinite`,
-                  filter: "blur(3px)",
+                  animation: `ember-rise 6s linear ${ember.delay}s infinite`,
+                  filter: "blur(0.4px)",
                 }}
               />
             ))}
           </svg>
         </div>
-      )}
+      ) : null}
 
       <svg
-        viewBox="0 0 280 380"
-        width="260"
-        height="353"
+        viewBox="0 0 280 460"
+        width="220"
+        height="362"
         className="relative"
         style={{
           filter: active
-            ? "drop-shadow(0 16px 30px rgba(255,69,0,0.18))"
-            : "drop-shadow(0 6px 18px rgba(0,0,0,0.55))",
+            ? "drop-shadow(0 18px 30px rgba(255,69,0,0.16))"
+            : "drop-shadow(0 10px 26px rgba(0,0,0,0.6))",
+          transition: "filter 600ms ease",
         }}
       >
         <defs>
-          <linearGradient id="hk-stem" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#0a0a0a" />
-            <stop offset="35%" stopColor="#5a5a5a" />
-            <stop offset="50%" stopColor="#7a7a7a" />
-            <stop offset="100%" stopColor="#0a0a0a" />
+          <linearGradient id="mn-stem" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#050505" />
+            <stop offset="20%" stopColor="#1c1c1c" />
+            <stop offset="50%" stopColor="#252525" />
+            <stop offset="80%" stopColor="#0e0e0e" />
+            <stop offset="100%" stopColor="#050505" />
           </linearGradient>
-          <linearGradient id="hk-brass" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7a5e2a" />
-            <stop offset="35%" stopColor="#d4ab5b" />
-            <stop offset="100%" stopColor="#3a2812" />
+          <linearGradient id="mn-tray" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#383532" />
+            <stop offset="40%" stopColor="#2a2826" />
+            <stop offset="100%" stopColor="#161412" />
           </linearGradient>
-          <radialGradient id="hk-vase" cx="35%" cy="30%" r="80%">
-            <stop offset="0%" stopColor="#3a2a1f" stopOpacity="0.5" />
-            <stop offset="55%" stopColor="#1a100a" stopOpacity="0.95" />
-            <stop offset="100%" stopColor="#080404" stopOpacity="1" />
+          <linearGradient id="mn-tray-edge" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1a1816" />
+            <stop offset="100%" stopColor="#0a0908" />
+          </linearGradient>
+          <linearGradient id="mn-collar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1c1c1c" />
+            <stop offset="30%" stopColor="#0a0a0a" />
+            <stop offset="55%" stopColor="#252525" />
+            <stop offset="100%" stopColor="#050505" />
+          </linearGradient>
+          <linearGradient id="mn-glass" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(180,170,150,0.10)" />
+            <stop offset="50%" stopColor="rgba(160,150,130,0.06)" />
+            <stop offset="100%" stopColor="rgba(220,200,160,0.12)" />
+          </linearGradient>
+          <radialGradient id="mn-glass-back" cx="35%" cy="40%" r="80%">
+            <stop offset="0%" stopColor="rgba(50,40,30,0.35)" />
+            <stop offset="70%" stopColor="rgba(20,16,12,0.55)" />
+            <stop offset="100%" stopColor="rgba(8,6,4,0.85)" />
           </radialGradient>
-          <linearGradient id="hk-liquid" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#c25030" stopOpacity="0.2" />
-            <stop offset="45%" stopColor="#8b0000" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#400000" stopOpacity="0.85" />
+          <linearGradient id="mn-downstem" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#2a2218" />
+            <stop offset="50%" stopColor="#8a6e3a" />
+            <stop offset="100%" stopColor="#2a2218" />
           </linearGradient>
-          <linearGradient id="hk-clay" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3a1f14" />
-            <stop offset="55%" stopColor="#4a2a18" />
-            <stop offset="100%" stopColor="#1a0e08" />
+          <linearGradient id="mn-clay" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1a0e08" />
+            <stop offset="100%" stopColor="#0a0604" />
           </linearGradient>
-          <radialGradient id="hk-coal" cx="50%" cy="40%" r="65%">
+          <radialGradient id="mn-coal" cx="50%" cy="40%" r="65%">
             <stop offset="0%" stopColor="#fff2c8" />
             <stop offset="25%" stopColor="#ffb070" />
             <stop offset="65%" stopColor="#ff4500" />
-            <stop offset="100%" stopColor="#3a0a00" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#2a0a00" stopOpacity="0.9" />
           </radialGradient>
-          <clipPath id="hk-cavity">
+          {dominant ? (
+            <linearGradient id="mn-water" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={`${dominant}00`} />
+              <stop offset="60%" stopColor={`${dominant}11`} />
+              <stop offset="100%" stopColor={`${dominant}22`} />
+            </linearGradient>
+          ) : null}
+          <clipPath id="mn-cavity">
             <path
-              d={`M ${cavityX} ${cavityY} L ${cavityX + cavityW} ${cavityY} L ${
-                cavityX + cavityW - 4
-              } ${cavityY + cavityH} L ${cavityX + 4} ${cavityY + cavityH} Z`}
+              d={`M ${cavityX} ${cavityY}
+                     Q ${cavityX} ${cavityY - 2} ${cavityX + 2} ${cavityY - 2}
+                     L ${cavityX + cavityW - 2} ${cavityY - 2}
+                     Q ${cavityX + cavityW} ${cavityY - 2} ${cavityX + cavityW} ${cavityY}
+                     L ${cavityX + cavityW - 4} ${cavityY + cavityH}
+                     Q ${cavityX + cavityW - 4} ${cavityY + cavityH + 2} ${cavityX + cavityW - 6} ${cavityY + cavityH + 2}
+                     L ${cavityX + 6} ${cavityY + cavityH + 2}
+                     Q ${cavityX + 4} ${cavityY + cavityH + 2} ${cavityX + 4} ${cavityY + cavityH} Z`}
             />
           </clipPath>
+          <pattern id="mn-hex" x="0" y="0" width="14" height="16" patternUnits="userSpaceOnUse">
+            <path
+              d="M 7 1 L 13 4.5 L 13 11.5 L 7 15 L 1 11.5 L 1 4.5 Z"
+              fill="none"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="0.8"
+            />
+          </pattern>
+          <pattern id="mn-stone" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.4" fill="rgba(255,255,255,0.07)" />
+            <circle cx="4" cy="3" r="0.3" fill="rgba(0,0,0,0.4)" />
+            <circle cx="2" cy="5" r="0.5" fill="rgba(255,255,255,0.04)" />
+          </pattern>
         </defs>
-
-        <g opacity={active ? 0.95 : 0.45}>
-          <path
-            d="M162 175 C220 170 250 220 240 270 C235 305 200 320 175 340"
-            stroke="#4a281a"
-            strokeWidth="9"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <rect x="167" y="335" width="12" height="10" rx="2" fill="url(#hk-brass)" />
-        </g>
-
-        <g opacity={active ? 1 : 0.6}>
-          <path
-            d="M116 220 L116 240 C80 248 60 280 60 310 C60 348 110 360 140 360 C170 360 220 348 220 310 C220 280 200 248 164 240 L164 220 Z"
-            fill="url(#hk-vase)"
-            stroke="rgba(255,255,255,0.08)"
-          />
-          <path
-            d="M66 290 C62 320 90 348 140 348 C190 348 218 320 214 290 C200 304 170 306 140 306 C110 306 80 304 66 290 Z"
-            fill="url(#hk-liquid)"
-          />
-          {active &&
-            [110, 140, 170, 125, 155].map((x, i) => (
-              <circle
-                key={i}
-                cx={x}
-                cy="340"
-                r="2.4"
-                fill="rgba(255,200,150,0.45)"
-                style={{ animation: `bubble-up 3s ease-in ${i * 0.45}s infinite` }}
-              />
-            ))}
-          <ellipse cx="80" cy="290" rx="4" ry="32" fill="rgba(255,255,255,0.08)" />
-        </g>
-
-        <g opacity={active ? 1 : 0.55}>
-          <path d="M122 100 L158 100 L154 116 L126 116 Z" fill="url(#hk-stem)" />
-          <rect x="128" y="116" width="24" height="100" fill="url(#hk-stem)" />
-          <rect x="124" y="138" width="32" height="6" rx="1" fill="url(#hk-brass)" />
-          <rect x="152" y="166" width="14" height="8" rx="1.5" fill="url(#hk-stem)" />
-          <circle cx="164" cy="170" r="3.5" fill="url(#hk-brass)" />
-          <rect x="124" y="200" width="32" height="6" rx="1" fill="url(#hk-brass)" />
-          <rect x="116" y="214" width="48" height="8" rx="1.5" fill="url(#hk-stem)" />
-          <ellipse cx="140" cy="100" rx="56" ry="5" fill="#3a3a3a" />
-        </g>
 
         <g>
           <path
-            d="M108 42 Q108 38 112 38 L168 38 Q172 38 172 42 L162 96 Q162 100 158 100 L122 100 Q118 100 118 96 L108 42 Z"
-            fill="url(#hk-clay)"
-            stroke="rgba(0,0,0,0.6)"
-            opacity={active ? 1 : 0.65}
+            d="M 108 28 Q 108 24 112 24 L 168 24 Q 172 24 172 28 L 170 32 L 162 74 Q 162 78 158 78 L 122 78 Q 118 78 118 74 L 110 32 Z"
+            fill="url(#mn-clay)"
+            stroke="rgba(0,0,0,0.7)"
+            strokeWidth="0.8"
+            style={{ opacity: active ? 1 : 0.7, transition: "opacity 600ms ease" }}
           />
-          <g clipPath="url(#hk-cavity)">
-            <rect x={cavityX} y={cavityY} width={cavityW} height={cavityH + 4} fill="#0a0606" />
+          <rect
+            x="109"
+            y="28"
+            width="62"
+            height="1.5"
+            fill="rgba(255,255,255,0.06)"
+            style={{ opacity: active ? 1 : 0.4, transition: "opacity 600ms ease" }}
+          />
+          <g clipPath="url(#mn-cavity)">
+            <rect x={cavityX} y={cavityY - 2} width={cavityW} height={cavityH + 4} fill="#0a0606" />
             {stripes.map((stripe) => (
               <rect
                 key={stripe.id}
@@ -201,33 +235,170 @@ function HookahVisualizer({ picks }: { picks: Pick[] }) {
                 style={{ transition: "all 400ms cubic-bezier(.2,.7,.2,1)" }}
               />
             ))}
+            {active && total > 0 ? (
+              <rect
+                x={cavityX}
+                y={cavityY + cavityH - (total / 100) * cavityH}
+                width={cavityW}
+                height="2"
+                fill="rgba(255,255,255,0.22)"
+                style={{ transition: "y 400ms cubic-bezier(.2,.7,.2,1)" }}
+              />
+            ) : null}
             <circle
               cx={cavityX + cavityW / 2}
               cy={cavityY + cavityH - 4}
               r="2"
               fill="#0a0606"
+              stroke="rgba(255,140,80,0.18)"
+              strokeWidth="0.5"
             />
           </g>
-          <ellipse cx="140" cy="36" rx="36" ry="4" fill="#9a9a9a" opacity={active ? 1 : 0.45} />
-          <g
-            style={{
-              animation: active ? "ember-flicker 2.6s ease-in-out infinite" : "none",
-              transformOrigin: "140px 28px",
-            }}
-            opacity={active ? 1 : 0.45}
-          >
-            <circle cx="122" cy="30" r="7" fill="url(#hk-coal)" />
-            <circle cx="140" cy="26" r="8" fill="url(#hk-coal)" />
-            <circle cx="158" cy="30" r="7" fill="url(#hk-coal)" />
+          <path
+            d={`M ${cavityX} ${cavityY} Q ${cavityX} ${cavityY - 2} ${cavityX + 2} ${cavityY - 2}
+                    L ${cavityX + cavityW - 2} ${cavityY - 2} Q ${cavityX + cavityW} ${cavityY - 2} ${cavityX + cavityW} ${cavityY}`}
+            stroke="rgba(0,0,0,0.6)"
+            strokeWidth="1.5"
+            fill="none"
+          />
+          <g style={{ opacity: active ? 1 : 0.4, transition: "opacity 600ms ease" }}>
+            <ellipse cx="140" cy="24" rx="33" ry="3.5" fill="#3a3a3a" />
+            <ellipse cx="140" cy="22" rx="33" ry="3.5" fill="#7a7a7a" />
+            <ellipse cx="140" cy="21" rx="31" ry="3" fill="#a0a0a0" />
+            <path
+              d="M 112 22 L 118 20 L 124 22 L 130 20 L 136 22 L 142 20 L 148 22 L 154 20 L 160 22 L 166 20"
+              stroke="rgba(0,0,0,0.25)"
+              strokeWidth="0.4"
+              fill="none"
+            />
+            <g
+              style={{
+                animation: active ? "ember-flicker 2.6s ease-in-out infinite" : "none",
+                transformOrigin: "140px 14px",
+              }}
+            >
+              <rect x="118" y="10" width="12" height="12" rx="1.2" fill="url(#mn-coal)" transform="rotate(-6 124 16)" />
+              <rect x="133" y="7" width="14" height="14" rx="1.4" fill="url(#mn-coal)" transform="rotate(4 140 14)" />
+              <rect x="150" y="10" width="12" height="12" rx="1.2" fill="url(#mn-coal)" transform="rotate(8 156 16)" />
+              <path
+                d="M 122 14 L 126 18 M 138 12 L 142 16 M 154 14 L 158 18"
+                stroke="rgba(255,240,200,0.55)"
+                strokeWidth="0.4"
+                fill="none"
+              />
+            </g>
           </g>
         </g>
 
-        <ellipse cx="140" cy="360" rx="74" ry="7" fill="#2a2a2a" />
-        <ellipse cx="140" cy="358" rx="74" ry="5" fill="url(#hk-brass)" opacity="0.7" />
+        <g style={{ opacity: active ? 1 : 0.72, transition: "opacity 600ms ease" }}>
+          <rect x="131" y="78" width="18" height="220" fill="url(#mn-stem)" />
+          <rect x="131" y="78" width="18" height="220" fill="url(#mn-hex)" />
+          <rect x="131" y="78" width="2" height="220" fill="rgba(0,0,0,0.6)" />
+          <rect x="147" y="78" width="2" height="220" fill="rgba(0,0,0,0.6)" />
+          <rect x="139.4" y="78" width="1.2" height="220" fill="rgba(255,255,255,0.05)" />
+        </g>
+
+        <g style={{ opacity: active ? 1 : 0.78, transition: "opacity 600ms ease" }}>
+          <ellipse cx="140" cy="86" rx="94" ry="3" fill="url(#mn-tray-edge)" />
+          <path
+            d="M 48 80 Q 48 78 53 78 L 227 78 Q 232 78 232 80 L 232 81 Q 232 84 227 84 L 53 84 Q 48 84 48 81 Z"
+            fill="url(#mn-tray)"
+            stroke="rgba(0,0,0,0.6)"
+            strokeWidth="0.4"
+          />
+          <path
+            d="M 48 80 Q 48 78 53 78 L 227 78 Q 232 78 232 80 L 232 81 Q 232 84 227 84 L 53 84 Q 48 84 48 81 Z"
+            fill="url(#mn-stone)"
+            opacity="0.7"
+          />
+          <path d="M 53 78.4 L 227 78.4" stroke="rgba(255,255,255,0.06)" strokeWidth="0.4" />
+          <ellipse cx="140" cy="79.5" rx="5" ry="1" fill="#050403" />
+        </g>
+
+        <g style={{ opacity: active ? 1 : 0.72, transition: "opacity 600ms ease" }}>
+          <rect
+            x="122"
+            y="296"
+            width="36"
+            height="22"
+            rx="2.5"
+            fill="url(#mn-collar)"
+            stroke="rgba(0,0,0,0.8)"
+            strokeWidth="0.6"
+          />
+          <line x1="122" y1="302" x2="158" y2="302" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
+          <line x1="122" y1="302.6" x2="158" y2="302.6" stroke="rgba(0,0,0,0.5)" strokeWidth="0.5" />
+          <line x1="122" y1="313" x2="158" y2="313" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" />
+          <line x1="122" y1="313.6" x2="158" y2="313.6" stroke="rgba(0,0,0,0.5)" strokeWidth="0.5" />
+          <text
+            x="140"
+            y="311.4"
+            textAnchor="middle"
+            fill="rgba(255,255,255,0.55)"
+            fontFamily="Manrope, sans-serif"
+            fontSize="5.5"
+            fontWeight="800"
+            letterSpacing="2"
+          >
+            MONO
+          </text>
+          <path d="M 126 318 L 154 318 L 152 324 L 128 324 Z" fill="#0a0a0a" />
+          <line x1="131" y1="296" x2="149" y2="296" stroke="rgba(0,0,0,0.7)" strokeWidth="0.5" />
+        </g>
+
+        <g style={{ opacity: active ? 1 : 0.85, transition: "opacity 600ms ease" }}>
+          <path
+            d="M 122 322 L 122 348 C 92 358, 70 388, 70 414 C 70 442, 110 454, 140 454 C 170 454, 210 442, 210 414 C 210 388, 188 358, 158 348 L 158 322 Z"
+            fill="url(#mn-glass-back)"
+          />
+          {dominant ? (
+            <path
+              d="M 75 396 C 72 420, 100 450, 140 450 C 180 450, 208 420, 205 396 C 195 408, 170 412, 140 412 C 110 412, 85 408, 75 396 Z"
+              fill="url(#mn-water)"
+              style={{ transition: "fill 500ms ease" }}
+            />
+          ) : null}
+          <path
+            d="M 122 322 L 122 348 C 92 358, 70 388, 70 414 C 70 442, 110 454, 140 454 C 170 454, 210 442, 210 414 C 210 388, 188 358, 158 348 L 158 322 Z"
+            fill="url(#mn-glass)"
+            stroke="rgba(255,255,255,0.16)"
+            strokeWidth="1"
+          />
+          {active ? (
+            <g>
+              {[
+                { x: 105, delay: 0 },
+                { x: 140, delay: 0.6 },
+                { x: 175, delay: 1.2 },
+                { x: 120, delay: 1.8 },
+                { x: 158, delay: 2.4 },
+              ].map((bubble, index) => (
+                <circle
+                  key={index}
+                  cx={bubble.x}
+                  cy="444"
+                  r="2.2"
+                  fill="rgba(255,220,180,0.5)"
+                  stroke="rgba(255,200,140,0.7)"
+                  strokeWidth="0.4"
+                  style={{
+                    animation: `bubble-up 3.2s ease-in ${bubble.delay}s infinite`,
+                  }}
+                />
+              ))}
+            </g>
+          ) : null}
+          <rect x="138.5" y="324" width="3" height="98" fill="url(#mn-downstem)" />
+          <circle cx="140" cy="424" r="2.2" fill="#5a4a28" />
+          <ellipse cx="92" cy="400" rx="4" ry="30" fill="rgba(255,255,255,0.14)" />
+          <ellipse cx="190" cy="408" rx="3" ry="22" fill="rgba(255,255,255,0.08)" />
+          <ellipse cx="140" cy="452" rx="40" ry="4" fill="rgba(255,255,255,0.06)" />
+          <rect x="122" y="320" width="36" height="3" fill="rgba(0,0,0,0.5)" />
+        </g>
       </svg>
 
       {!active && (
-        <div className="pointer-events-none absolute top-[60px] inset-x-0 text-center">
+        <div className="pointer-events-none absolute inset-x-0 top-[130px] text-center">
           <div className="text-[11px] font-bold tracking-[1.8px] text-white/40 uppercase">
             Чаша порожня
           </div>
@@ -240,49 +411,90 @@ function HookahVisualizer({ picks }: { picks: Pick[] }) {
   );
 }
 
+function SmokeWisps() {
+  const puffs = [
+    { x: 96, delay: 0, size: 40 },
+    { x: 120, delay: 1.2, size: 54 },
+    { x: 144, delay: 0.6, size: 38 },
+    { x: 108, delay: 2.1, size: 32 },
+    { x: 132, delay: 1.8, size: 36 },
+  ];
+
+  return (
+    <svg viewBox="0 0 240 160" width="100%" height="100%" className="absolute inset-0">
+      <defs>
+        <radialGradient id="puff-grad">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
+          <stop offset="50%" stopColor="rgba(255,180,140,0.18)" />
+          <stop offset="100%" stopColor="rgba(255,69,0,0)" />
+        </radialGradient>
+      </defs>
+      {puffs.map((puff, index) => (
+        <circle
+          key={index}
+          cx={puff.x}
+          cy="130"
+          r={puff.size / 2}
+          fill="url(#puff-grad)"
+          style={{
+            animation: `rise-puff 4.5s ease-out ${puff.delay}s infinite`,
+            filter: "blur(3px)",
+          }}
+        />
+      ))}
+    </svg>
+  );
+}
+
 function StatRow({
   label,
   value,
+  max,
   icon,
   color,
 }: {
   label: string;
   value: number;
+  max: number;
   icon: string;
   color: string;
 }) {
+  const pct = Math.max(0, Math.min(1, value / max));
+  // Internal divider marks at quarters so the eye still has a sense of scale
+  // without rendering every integer tick (gets visually noisy at max=12).
+  const marks = [25, 50, 75];
   return (
     <div className="flex items-center gap-2.5 py-2">
       <div className="w-[22px] shrink-0 text-center text-[14px]">{icon}</div>
       <div className="w-[88px] shrink-0 text-[12px] font-medium text-[#888]">
         {label}
       </div>
-      <div className="flex flex-1 gap-1">
-        {Array.from({ length: 5 }).map((_, index) => {
-          const fill =
-            index < Math.floor(value)
-              ? "100%"
-              : index === Math.floor(value) && value % 1 !== 0
-                ? `${(value % 1) * 100}%`
-                : "0%";
-          return (
-            <div
-              key={index}
-              className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.08]"
-            >
-              <div
-                className="h-full rounded-full transition-[width] duration-500"
-                style={{
-                  width: fill,
-                  background: `linear-gradient(90deg, ${color}99, ${color})`,
-                }}
-              />
-            </div>
-          );
-        })}
+      <div
+        className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.08]"
+        aria-label={`${label} ${value.toFixed(1)} з ${max}`}
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{
+            width: `${pct * 100}%`,
+            background: `linear-gradient(90deg, ${color}99, ${color})`,
+          }}
+        />
+        {marks.map((p) => (
+          <div
+            key={p}
+            aria-hidden
+            className="absolute top-0 bottom-0"
+            style={{
+              left: `${p}%`,
+              width: 1,
+              background: "rgba(0,0,0,0.35)",
+            }}
+          />
+        ))}
       </div>
-      <div className="w-[34px] text-right text-[12px] font-bold text-white tabular-nums">
-        {value.toFixed(1)}
+      <div className="w-[44px] text-right text-[12px] font-bold text-white tabular-nums">
+        {value.toFixed(1)}/{max}
       </div>
     </div>
   );
@@ -347,7 +559,177 @@ function SlotCard({
   );
 }
 
-function EmptySlot({ index, onTap }: { index: number; onTap: () => void }) {
+function OverpackSwitch({
+  active,
+  price,
+  onChange,
+}: {
+  active: boolean;
+  price: number;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={active}
+      onClick={() => onChange(!active)}
+      className="tap flex w-full items-center gap-3 rounded-[14px] border px-3.5 py-3 text-left transition-colors"
+      style={{
+        background: active ? "rgba(255,69,0,0.08)" : "rgba(255,255,255,0.02)",
+        borderColor: active
+          ? "rgba(255,69,0,0.45)"
+          : "rgba(255,255,255,0.06)",
+      }}
+    >
+      <div
+        className="flex size-9 shrink-0 items-center justify-center rounded-[10px] text-[18px]"
+        style={{
+          background: active ? "rgba(255,69,0,0.15)" : "rgba(255,255,255,0.04)",
+          border: `1px solid ${active ? "rgba(255,69,0,0.3)" : "rgba(255,255,255,0.06)"}`,
+        }}
+      >
+        ⚡
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[14px] font-bold text-white">Оверпак</span>
+          <span
+            className="text-[12px] font-bold tabular-nums"
+            style={{ color: active ? "#ff8a3d" : "#888" }}
+          >
+            +{price}₴
+          </span>
+        </div>
+        <div className="mt-0.5 text-[11px] leading-snug text-[#888]">
+          Більше тютюну, довше куриться, трохи міцніший.
+        </div>
+      </div>
+      <span
+        className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+        style={{
+          background: active ? "#ff4500" : "rgba(255,255,255,0.18)",
+        }}
+        aria-hidden
+      >
+        <span
+          className="inline-block size-5 transform rounded-full bg-white shadow-sm transition-transform"
+          style={{ transform: active ? "translateX(22px)" : "translateX(2px)" }}
+        />
+      </span>
+    </button>
+  );
+}
+
+function CoolSwitch({
+  active,
+  intensity,
+  onToggle,
+  onIntensityChange,
+}: {
+  active: boolean;
+  intensity: number;
+  onToggle: (next: boolean) => void;
+  onIntensityChange: (next: number) => void;
+}) {
+  return (
+    <div
+      className="rounded-[14px] border transition-colors"
+      style={{
+        background: active ? "rgba(120,180,255,0.06)" : "rgba(255,255,255,0.02)",
+        borderColor: active ? "rgba(120,180,255,0.4)" : "rgba(255,255,255,0.06)",
+      }}
+    >
+      <button
+        type="button"
+        role="switch"
+        aria-checked={active}
+        onClick={() => onToggle(!active)}
+        className="tap flex w-full items-center gap-3 px-3.5 py-3 text-left"
+      >
+        <div
+          className="flex size-9 shrink-0 items-center justify-center rounded-[10px] text-[18px]"
+          style={{
+            background: active ? "rgba(120,180,255,0.18)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${active ? "rgba(120,180,255,0.35)" : "rgba(255,255,255,0.06)"}`,
+          }}
+        >
+          ❄
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[14px] font-bold text-white">Холодок</span>
+            <span
+              className="text-[12px] font-bold"
+              style={{ color: active ? "#7ec8ff" : "#888" }}
+            >
+              безкоштовно
+            </span>
+          </div>
+          <div className="mt-0.5 text-[11px] leading-snug text-[#888]">
+            Ментолова прохолода поверх міксу.
+          </div>
+        </div>
+        <span
+          className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+          style={{
+            background: active ? "#3b82f6" : "rgba(255,255,255,0.18)",
+          }}
+          aria-hidden
+        >
+          <span
+            className="inline-block size-5 transform rounded-full bg-white shadow-sm transition-transform"
+            style={{ transform: active ? "translateX(22px)" : "translateX(2px)" }}
+          />
+        </span>
+      </button>
+      {active && (
+        <div className="border-t border-white/[0.05] px-3.5 py-3">
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="text-[11px] font-bold tracking-[1px] text-[#7ec8ff] uppercase">
+              Інтенсивність
+            </span>
+            <span className="text-[13px] font-bold text-white tabular-nums">
+              {intensity} / {COOL_MAX_INTENSITY}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={COOL_MIN_INTENSITY}
+            max={COOL_MAX_INTENSITY}
+            step={1}
+            value={intensity}
+            onChange={(event) =>
+              onIntensityChange(Number.parseInt(event.target.value, 10))
+            }
+            className="w-full accent-[#3b82f6]"
+            aria-label="Інтенсивність холодку"
+          />
+          <p
+            className="mt-2 rounded-[10px] px-2.5 py-2 text-[11px] leading-snug text-[#ffb070]"
+            style={{
+              background: "rgba(255,69,0,0.06)",
+              border: "1px solid rgba(255,69,0,0.18)",
+            }}
+          >
+            Попередження. Холодок може перебити смак кальяну. Вибирайте з
+            обережністю.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptySlot({
+  index,
+  total,
+  onTap,
+}: {
+  index: number;
+  total: number;
+  onTap: () => void;
+}) {
   return (
     <button
       type="button"
@@ -360,7 +742,7 @@ function EmptySlot({ index, onTap }: { index: number; onTap: () => void }) {
       <div>
         <div className="text-[14px] font-semibold text-white">Обрати тютюн</div>
         <div className="mt-0.5 text-[11px] text-[#666]">
-          Слот {index} з {MAX_INGREDIENTS_PER_MIX}
+          Слот {index} з {total}
         </div>
       </div>
     </button>
@@ -404,7 +786,7 @@ function PickerSheet({
         }}
       />
       <div
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[85dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[85dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
         style={{ transform: open ? "translateY(0)" : "translateY(100%)" }}
       >
         <div className="flex justify-center py-2.5">
@@ -495,7 +877,15 @@ export function MixerClient() {
   const removeTobacco = useMixStore((state) => state.removeTobacco);
   const setPercentage = useMixStore((state) => state.setPercentage);
   const clear = useMixStore((state) => state.clear);
+  const isOverpack = useMixStore((state) => state.isOverpack);
+  const setOverpack = useMixStore((state) => state.setOverpack);
+  const isCool = useMixStore((state) => state.isCool);
+  const coolIntensity = useMixStore((state) => state.coolIntensity);
+  const setCool = useMixStore((state) => state.setCool);
+  const setCoolIntensity = useMixStore((state) => state.setCoolIntensity);
   const saveDraftAction = useDraftsStore((state) => state.add);
+  const settings = usePublicSettings();
+  const maxIngredients = settings.maxIngredientsPerMix;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [serviceOpen, setServiceOpen] = useState(false);
 
@@ -509,22 +899,26 @@ export function MixerClient() {
         .filter((item): item is Pick => Boolean(item)),
     [catalog, slots],
   );
-  const strength = calculateStrength(
+  // Weighted-mean strength of the mix. Overpack adds a small bump (more tobacco
+  // per draw → slightly stronger smoke), capped to the max scale.
+  const baseStrength = calculateStrength(
     picks.map((pick) => ({ strength: pick.strength, percentage: pick.pct })),
   );
+  const strength =
+    picks.length === 0
+      ? 0
+      : Math.min(MAX_STRENGTH, baseStrength + (isOverpack ? 1 : 0));
+  const totalPrice =
+    settings.defaultPrice + (isOverpack ? settings.overpackPrice : 0);
   const smoke =
     picks.length === 0
       ? 0
       : picks.reduce((sum, pick) => sum + pick.smoke * pick.pct, 0) / 100;
-  const complexity =
-    picks.length === 0
-      ? 0
-      : Math.min(5, picks.length + (new Set(picks.map((pick) => pick.cat)).size - 1) * 0.5);
   const sumPct = picks.reduce((sum, pick) => sum + pick.pct, 0);
 
   const addPick = (item: CatalogTobacco) => {
-    if (slots.length >= MAX_INGREDIENTS_PER_MIX) {
-      toast(`Максимум ${MAX_INGREDIENTS_PER_MIX} тютюни в міксі`);
+    if (slots.length >= maxIngredients) {
+      toast(`Максимум ${maxIngredients} тютюни в міксі`);
       return;
     }
     addTobacco(item.id);
@@ -594,9 +988,22 @@ export function MixerClient() {
         </div>
 
         <div className="mx-[22px] mt-2 rounded-[14px] border border-white/[0.05] bg-[#141010]/70 px-3.5 py-3 backdrop-blur">
-          <StatRow icon="🔥" label="Міцність" value={strength} color="#ff4500" />
-          <StatRow icon="💨" label="Димність" value={smoke} color="#a8b3c4" />
-          <StatRow icon="✦" label="Складність" value={complexity} color="#c98b3c" />
+          <StatRow icon="🔥" label="Міцність" value={strength} max={MAX_STRENGTH} color="#ff4500" />
+          <StatRow icon="💨" label="Димність" value={smoke} max={5} color="#a8b3c4" />
+        </div>
+
+        <div className="mx-[22px] mt-3 flex flex-col gap-2.5">
+          <OverpackSwitch
+            active={isOverpack}
+            price={settings.overpackPrice}
+            onChange={setOverpack}
+          />
+          <CoolSwitch
+            active={isCool}
+            intensity={coolIntensity}
+            onToggle={setCool}
+            onIntensityChange={setCoolIntensity}
+          />
         </div>
 
         <div className="px-[22px] pt-5">
@@ -605,7 +1012,7 @@ export function MixerClient() {
               Склад міксу
             </h3>
             <span className="text-[11px] text-[#888] tabular-nums">
-              {picks.length} / {MAX_INGREDIENTS_PER_MIX} · {sumPct}%
+              {picks.length} / {maxIngredients} · {sumPct}%
             </span>
           </div>
           <div className="flex flex-col gap-2.5">
@@ -617,8 +1024,12 @@ export function MixerClient() {
                 onRemove={() => removeTobacco(pick.id)}
               />
             ))}
-            {picks.length < MAX_INGREDIENTS_PER_MIX && (
-              <EmptySlot index={picks.length + 1} onTap={() => setPickerOpen(true)} />
+            {picks.length < maxIngredients && (
+              <EmptySlot
+                index={picks.length + 1}
+                total={maxIngredients}
+                onTap={() => setPickerOpen(true)}
+              />
             )}
           </div>
         </div>
@@ -639,13 +1050,18 @@ export function MixerClient() {
 
       <div className="absolute inset-x-0 bottom-0 z-30 border-t border-white/[0.05] bg-gradient-to-b from-transparent via-[#0a0a0af5] to-[#0a0a0a] px-4 pt-3 pb-6 backdrop-blur-xl">
         <div className="flex items-center gap-2.5">
-          <div className="w-[60px] shrink-0">
+          <div className="w-[64px] shrink-0">
             <div className="mb-px text-[9px] font-semibold tracking-[1.2px] text-[#888] uppercase">
               Ціна
             </div>
             <div className="text-[22px] leading-none font-extrabold tracking-[-0.5px] text-white">
-              {DEFAULT_PRICE_UAH}<span className="ml-px text-[13px] opacity-70">₴</span>
+              {totalPrice}<span className="ml-px text-[13px] opacity-70">₴</span>
             </div>
+            {isOverpack && (
+              <div className="mt-px text-[9px] font-semibold tracking-[0.6px] text-[#ff8a3d]">
+                +{settings.overpackPrice}₴ оверпак
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -690,6 +1106,7 @@ export function MixerClient() {
 
       <ServiceSheet
         open={serviceOpen}
+        isOverpack={isOverpack}
         onClose={() => setServiceOpen(false)}
         onConfirm={confirmOrder}
       />

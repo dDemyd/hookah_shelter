@@ -5,11 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  OVERPACK_EXTRA_GRAMS,
   SERVICE_TYPES,
   SERVICE_TYPE_LABELS,
-  SERVICE_TYPE_PRICES,
   type ServiceType,
 } from "@/lib/constants";
+import { usePublicSettings } from "@/lib/hooks/use-max-ingredients";
 import { useMixStore } from "@/lib/stores/mix-store";
 import { useOrdersHistoryStore } from "@/lib/stores/orders-history-store";
 import { getGuestId } from "@/lib/utils/guest-id";
@@ -34,12 +35,36 @@ export function NewOrderClient() {
   const serviceType = parseServiceType(searchParams.get("service"));
   const slots = useMixStore((state) => state.slots);
   const tableId = useMixStore((state) => state.tableId);
+  const isOverpack = useMixStore((state) => state.isOverpack);
+  const isCool = useMixStore((state) => state.isCool);
+  const coolIntensity = useMixStore((state) => state.coolIntensity);
   const clear = useMixStore((state) => state.clear);
   const recordSubmittedOrder = useOrdersHistoryStore((state) => state.add);
+  const settings = usePublicSettings();
+  // Presets don't have an overpack toggle — the bowl size is part of the recipe.
+  const overpackEnabled = !presetId && isOverpack;
+  const coolEnabled = !presetId && isCool;
+  const isDayLoaner = serviceType === "day_loaner";
+  const depositAmount = isDayLoaner ? settings.dayLoanerDeposit : 0;
+  const servicePrice =
+    serviceType === "refill"
+      ? settings.refillPrice
+      : isDayLoaner
+        ? settings.dayLoanerPrice
+        : settings.defaultPrice;
+  const totalPrice =
+    servicePrice +
+    depositAmount +
+    (overpackEnabled ? settings.overpackPrice : 0);
   const [guestName, setGuestName] = useState("");
   const [guestContact, setGuestContact] = useState("");
   const [notes, setNotes] = useState("");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  // When seated at a table, the kalyanchik can find the guest in person — so we
+  // hide the contact field by default and let them opt in. For take-away (no
+  // table) the contact is always shown since we need a way to reach them.
+  const [contactOptIn, setContactOptIn] = useState(false);
+  const showContactField = tableId === null || contactOptIn;
 
   const catalogQuery = useQuery({
     queryKey: ["catalog", "tobaccos"],
@@ -83,9 +108,11 @@ export function NewOrderClient() {
         tableId,
         guestId: getGuestId() ?? undefined,
         guestName,
-        guestContact,
+        guestContact: showContactField ? guestContact : "",
         notes,
         serviceType,
+        isOverpack: overpackEnabled,
+        coolIntensity: coolEnabled ? coolIntensity : 0,
         presetMixId: presetId ?? undefined,
         ingredients: presetId
           ? undefined
@@ -117,16 +144,48 @@ export function NewOrderClient() {
         <h1 className="mt-1 text-[28px] leading-tight font-extrabold text-white">
           Підтвердження
         </h1>
-        <div className="mt-2 flex items-center gap-2 text-[13px] text-[#888]">
+        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[#888]">
           <span>{tableId ? `Стіл №${tableId}` : "Стіл не вказано"}</span>
           <span aria-hidden>·</span>
           <span className="text-white">
-            {serviceType === "refill" ? "🍃" : "🪔"}{" "}
+            {serviceType === "refill" ? "🍃" : serviceType === "day_loaner" ? "🎒" : "🪔"}{" "}
             {SERVICE_TYPE_LABELS[serviceType]}{" "}
-            <span className="font-bold text-[#ff8a3d]">
-              {SERVICE_TYPE_PRICES[serviceType]}₴
-            </span>
+            <span className="font-bold text-[#ff8a3d]">{totalPrice}₴</span>
           </span>
+          {overpackEnabled && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-[0.4px] text-[#ff8a3d]"
+              style={{
+                background: "rgba(255,69,0,0.1)",
+                border: "1px solid rgba(255,69,0,0.4)",
+              }}
+            >
+              ⚡ Оверпак +{OVERPACK_EXTRA_GRAMS} г · +{settings.overpackPrice}₴
+            </span>
+          )}
+          {coolEnabled && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-[0.4px]"
+              style={{
+                background: "rgba(120,180,255,0.1)",
+                border: "1px solid rgba(120,180,255,0.4)",
+                color: "#7ec8ff",
+              }}
+            >
+              ❄ Холодок · {coolIntensity}/5
+            </span>
+          )}
+          {isDayLoaner && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-[0.4px] text-[#ff8a3d]"
+              style={{
+                background: "rgba(255,69,0,0.1)",
+                border: "1px solid rgba(255,69,0,0.4)",
+              }}
+            >
+              🎒 Залог {depositAmount}₴ (повертається)
+            </span>
+          )}
         </div>
       </div>
 
@@ -186,17 +245,40 @@ export function NewOrderClient() {
             className="h-12 rounded-[12px] border border-white/[0.08] bg-white/[0.04] px-4 text-[15px] text-white outline-none placeholder:text-[#555] focus:border-[#ff4500]"
           />
         </label>
-        <label className="grid gap-1.5">
-          <span className="text-[12px] font-bold tracking-[1px] text-[#888] uppercase">
-            Контакт
-          </span>
-          <input
-            value={guestContact}
-            onChange={(event) => setGuestContact(event.target.value)}
-            placeholder="Телефон або Telegram"
-            className="h-12 rounded-[12px] border border-white/[0.08] bg-white/[0.04] px-4 text-[15px] text-white outline-none placeholder:text-[#555] focus:border-[#ff4500]"
-          />
-        </label>
+        {tableId !== null && !contactOptIn ? (
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-[12px] border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+            <input
+              type="checkbox"
+              checked={contactOptIn}
+              onChange={(event) => setContactOptIn(event.target.checked)}
+              className="size-4 accent-[#ff4500]"
+            />
+            <span className="text-[13px] text-[#aaa]">
+              Додати контакт{" "}
+              <span className="text-[11px] text-[#666]">
+                · на всяк випадок
+              </span>
+            </span>
+          </label>
+        ) : null}
+        {showContactField ? (
+          <label className="grid gap-1.5">
+            <span className="text-[12px] font-bold tracking-[1px] text-[#888] uppercase">
+              Контакт
+              {tableId === null ? (
+                <span className="ml-2 text-[10px] text-[#ff8a3d]">
+                  · обов&apos;язково для замовлень на винос
+                </span>
+              ) : null}
+            </span>
+            <input
+              value={guestContact}
+              onChange={(event) => setGuestContact(event.target.value)}
+              placeholder="Телефон або Telegram"
+              className="h-12 rounded-[12px] border border-white/[0.08] bg-white/[0.04] px-4 text-[15px] text-white outline-none placeholder:text-[#555] focus:border-[#ff4500]"
+            />
+          </label>
+        ) : null}
         <label className="grid gap-1.5">
           <span className="text-[12px] font-bold tracking-[1px] text-[#888] uppercase">
             Коментар

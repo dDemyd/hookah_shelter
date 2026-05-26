@@ -2,7 +2,7 @@
 
 import { toast } from "sonner";
 import { useMixStore } from "@/lib/stores/mix-store";
-import { MAX_INGREDIENTS_PER_MIX } from "@/lib/constants";
+import { useMaxIngredientsPerMix } from "@/lib/hooks/use-max-ingredients";
 import type { FreshTobacco } from "../_mock-data";
 import { HScroll } from "./HScroll";
 import { TobaccoCard } from "./TobaccoCard";
@@ -11,6 +11,7 @@ export function FreshTobaccosRow({ items }: { items: FreshTobacco[] }) {
   const slots = useMixStore((s) => s.slots);
   const addTobacco = useMixStore((s) => s.addTobacco);
   const removeTobacco = useMixStore((s) => s.removeTobacco);
+  const maxIngredients = useMaxIngredientsPerMix();
 
   const isPicked = (id: string) => slots.some((s) => s.tobaccoId === id);
 
@@ -20,8 +21,8 @@ export function FreshTobaccosRow({ items }: { items: FreshTobacco[] }) {
       toast(`${item.flavor} прибрано з міксу`);
       return;
     }
-    if (slots.length >= MAX_INGREDIENTS_PER_MIX) {
-      toast(`Максимум ${MAX_INGREDIENTS_PER_MIX} в міксі`);
+    if (slots.length >= maxIngredients) {
+      toast(`Максимум ${maxIngredients} в міксі`);
       return;
     }
     addTobacco(item.id);

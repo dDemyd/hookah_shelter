@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  ACTIVE_ORDER_STATUSES,
   ORDER_STATUS_LABELS,
   SERVICE_TYPE_LABELS,
   type OrderStatus,
@@ -14,9 +15,10 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ALLOWED_TRANSITIONS } from "@/lib/telegram/status-transitions";
 
-const ACTIVE_STATUSES: OrderStatus[] = ["pending", "accepted", "preparing", "ready"];
-
 type Relation<T> = T | T[] | null;
+type OrdersTab = "active" | "history";
+
+const HISTORY_ORDER_STATUSES: OrderStatus[] = ["closed", "cancelled"];
 
 type OrderRow = {
   id: string;
@@ -27,6 +29,9 @@ type OrderRow = {
   status: OrderStatus;
   service_type: ServiceType;
   price: number;
+  is_overpack: boolean;
+  cool_intensity: number;
+  deposit_amount: number;
   created_at: string;
   preset_mixes: Relation<{ name: string }>;
   order_ingredients:
@@ -54,18 +59,20 @@ function formatTime(value: string): string {
 export function OrdersClient() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<OrdersTab>("active");
+  const isHistory = tab === "history";
 
   const ordersQuery = useQuery({
-    queryKey: ["admin-active-orders"],
-    refetchInterval: 15_000,
+    queryKey: ["admin-orders", tab],
+    refetchInterval: isHistory ? false : 15_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id,short_code,table_id,guest_name,notes,status,service_type,price,created_at,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
+          "id,short_code,table_id,guest_name,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,created_at,preset_mixes(name),order_ingredients(percentage,tobacco_snapshot)",
         )
-        .in("status", ACTIVE_STATUSES)
-        .order("created_at", { ascending: true });
+        .in("status", isHistory ? HISTORY_ORDER_STATUSES : ACTIVE_ORDER_STATUSES)
+        .order("created_at", { ascending: !isHistory });
       if (error) throw error;
       return data as unknown as OrderRow[];
     },
@@ -100,7 +107,8 @@ export function OrdersClient() {
         <div>
           <h1 className="text-2xl font-bold">Замовлення</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Показані тільки активні замовлення. Після статусу “Віддано” або “Скасовано” замовлення зникає зі списку.
+            Активні замовлення ведуться до видачі й закриття. Історія показує
+            закриті та скасовані замовлення.
           </p>
         </div>
         <Button variant="outline" onClick={() => window.location.reload()}>
@@ -111,10 +119,27 @@ export function OrdersClient() {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
+      <div className="inline-flex rounded-lg border bg-card p-1">
+        <Button
+          size="sm"
+          variant={tab === "active" ? "default" : "ghost"}
+          onClick={() => setTab("active")}
+        >
+          Активні
+        </Button>
+        <Button
+          size="sm"
+          variant={tab === "history" ? "default" : "ghost"}
+          onClick={() => setTab("history")}
+        >
+          Історія
+        </Button>
+      </div>
+
       <div className="grid gap-3">
         {ordersQuery.data?.map((order) => {
           const preset = firstRelation(order.preset_mixes);
-          const transitions = ALLOWED_TRANSITIONS[order.status];
+          const transitions = isHistory ? [] : ALLOWED_TRANSITIONS[order.status];
 
           return (
             <div key={order.id} className="rounded-lg border bg-card p-4">
@@ -123,25 +148,42 @@ export function OrdersClient() {
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-semibold">#{order.short_code}</h2>
                     <Badge>{ORDER_STATUS_LABELS[order.status]}</Badge>
+                    {order.is_overpack ? (
+                      <Badge variant="outline" className="border-[#ff8a3d] text-[#ff8a3d]">
+                        ⚡ Оверпак
+                      </Badge>
+                    ) : null}
+                    {order.cool_intensity > 0 ? (
+                      <Badge variant="outline" className="border-[#7ec8ff] text-[#7ec8ff]">
+                        ❄ Холодок · {order.cool_intensity}/5
+                      </Badge>
+                    ) : null}
+                    {order.service_type === "day_loaner" && order.deposit_amount > 0 ? (
+                      <Badge variant="outline" className="border-[#ff8a3d] text-[#ff8a3d]">
+                        🎒 Залог {order.deposit_amount}₴
+                      </Badge>
+                    ) : null}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {formatTime(order.created_at)} · {SERVICE_TYPE_LABELS[order.service_type]} · {order.price} грн
                     {order.table_id ? ` · Стіл ${order.table_id}` : ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2">
-                  {transitions.map((status) => (
-                    <Button
-                      key={status}
-                      size="sm"
-                      variant={status === "cancelled" ? "destructive" : "outline"}
-                      disabled={updateStatus.isPending}
-                      onClick={() => updateStatus.mutate({ id: order.id, status })}
-                    >
-                      {ORDER_STATUS_LABELS[status]}
-                    </Button>
-                  ))}
-                </div>
+                {transitions.length > 0 ? (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {transitions.map((status) => (
+                      <Button
+                        key={status}
+                        size="sm"
+                        variant={status === "cancelled" ? "destructive" : "outline"}
+                        disabled={updateStatus.isPending}
+                        onClick={() => updateStatus.mutate({ id: order.id, status })}
+                      >
+                        {ORDER_STATUS_LABELS[status]}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <div className="mt-3 grid gap-2 text-sm md:grid-cols-[1fr_1fr]">
@@ -171,7 +213,9 @@ export function OrdersClient() {
         })}
         {ordersQuery.isLoading ? <p className="text-sm text-muted-foreground">Завантаження...</p> : null}
         {!ordersQuery.isLoading && ordersQuery.data?.length === 0 ? (
-          <p className="rounded-lg border p-4 text-sm text-muted-foreground">Активних замовлень немає.</p>
+          <p className="rounded-lg border p-4 text-sm text-muted-foreground">
+            {isHistory ? "Історія замовлень порожня." : "Активних замовлень немає."}
+          </p>
         ) : null}
       </div>
     </div>

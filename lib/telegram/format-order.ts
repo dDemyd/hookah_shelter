@@ -20,10 +20,19 @@ export type FormatOrderInput = {
   shortCode: string;
   tableId: number | null;
   guestName: string | null;
+  guestContact?: string | null;
   notes: string | null;
   status: OrderStatus;
   serviceType?: ServiceType;
   price?: number;
+  /** True if the guest paid for an extra-thick pack (+grams, slightly stronger). */
+  isOverpack?: boolean;
+  /** Extra grams above the default bowl when overpacking. Used in copy only. */
+  overpackExtraGrams?: number;
+  /** Холодок intensity 1-5; 0 means off. */
+  coolIntensity?: number;
+  /** Refundable deposit (₴) held against the order. */
+  depositAmount?: number;
   presetName?: string | null;
   ingredients: FormatOrderIngredient[];
   /** Telegram username/name of the staff member who acted, when known. */
@@ -45,6 +54,7 @@ const STATUS_EMOJI: Record<OrderStatus, string> = {
   preparing: "🔥",
   ready: "🎯",
   delivered: "📦",
+  closed: "🏁",
   cancelled: "❌",
 };
 
@@ -78,12 +88,30 @@ export function formatOrderMessage(input: FormatOrderInput): string {
   );
   if (input.serviceType) {
     const serviceLabel = SERVICE_TYPE_LABELS[input.serviceType];
-    const serviceIcon = input.serviceType === "refill" ? "🍃" : "🪔";
+    const serviceIcon =
+      input.serviceType === "refill"
+        ? "🍃"
+        : input.serviceType === "day_loaner"
+          ? "🎒"
+          : "🪔";
     const priceTag =
       typeof input.price === "number" ? ` · ${input.price}₴` : "";
     headerBits.push(`${serviceIcon} ${serviceLabel}${priceTag}`);
   }
   lines.push(headerBits.join("  ·  "));
+
+  // Overpack badge (separate line so it stands out — kalyanchik weighs more
+  // tobacco for these and we want them not to miss it).
+  if (input.isOverpack) {
+    const grams = input.overpackExtraGrams ?? 4;
+    lines.push(`⚡ <b>Оверпак</b> · +${grams} г`);
+  }
+  if (input.coolIntensity && input.coolIntensity > 0) {
+    lines.push(`❄ <b>Холодок</b> · ${input.coolIntensity}/5`);
+  }
+  if (input.serviceType === "day_loaner" && input.depositAmount) {
+    lines.push(`🎒 <b>Залог</b> · ${input.depositAmount}₴ (повертається)`);
+  }
 
   // Composition
   if (input.presetName) {
@@ -102,6 +130,9 @@ export function formatOrderMessage(input: FormatOrderInput): string {
   // Guest details
   if (input.guestName) {
     lines.push(`👤 ${esc(input.guestName)}`);
+  }
+  if (input.guestContact) {
+    lines.push(`📞 <b>Контакт:</b> ${esc(input.guestContact)}`);
   }
   if (input.notes) {
     lines.push(`💬 ${esc(input.notes)}`);
@@ -131,8 +162,8 @@ export function keyboardForStatus(
     return {
       inline_keyboard: [
         [
-          { text: "✅ Прийняти", callback_data: `accept:${orderId}` },
-          { text: "❌ Відхилити", callback_data: `cancel:${orderId}` },
+          { text: "Прийняти", callback_data: `accept:${orderId}` },
+          { text: "Відхилити", callback_data: `cancel:${orderId}` },
         ],
       ],
     };
@@ -140,25 +171,33 @@ export function keyboardForStatus(
   if (status === "accepted") {
     return {
       inline_keyboard: [
-        [{ text: "🔥 Готую", callback_data: `preparing:${orderId}` }],
-        [{ text: "❌ Скасувати", callback_data: `cancel:${orderId}` }],
+        [{ text: "Готую", callback_data: `preparing:${orderId}` }],
+        [{ text: "Скасувати", callback_data: `cancel:${orderId}` }],
       ],
     };
   }
   if (status === "preparing") {
     return {
       inline_keyboard: [
-        [{ text: "🎯 Готовий", callback_data: `ready:${orderId}` }],
+        [{ text: "Готовий", callback_data: `ready:${orderId}` }],
       ],
     };
   }
   if (status === "ready") {
     return {
       inline_keyboard: [
-        [{ text: "📦 Віддано", callback_data: `delivered:${orderId}` }],
+        [{ text: "Видано", callback_data: `delivered:${orderId}` }],
       ],
     };
   }
-  // delivered / cancelled — terminal, no buttons
+  if (status === "delivered") {
+    // Guest is smoking — admin closes the order when they leave.
+    return {
+      inline_keyboard: [
+        [{ text: "Закрити", callback_data: `closed:${orderId}` }],
+      ],
+    };
+  }
+  // closed / cancelled — terminal, no buttons
   return undefined;
 }

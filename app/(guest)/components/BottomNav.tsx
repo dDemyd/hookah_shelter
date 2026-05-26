@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useDraftsStore } from "@/lib/stores/drafts-store";
 import { useMixStore } from "@/lib/stores/mix-store";
 import { useOrdersHistoryStore } from "@/lib/stores/orders-history-store";
 import { cn } from "@/lib/utils";
+import { fetchOrdersByShortCodes } from "../order/order-data";
 import { HomeIcon, GridIcon, FlaskIcon, MixesIcon, ReceiptIcon } from "./Icon";
 
 const tabs = [
@@ -32,12 +34,34 @@ export function BottomNav() {
 
   const mixCount = useMixStore((s) => s.slots.length);
   const draftCount = useDraftsStore((s) => s.drafts.length);
-  const ordersCount = useOrdersHistoryStore((s) => s.orders.length);
+  const history = useOrdersHistoryStore((s) => s.orders);
+
+  // Share the cache key with OrdersClient so we don't double-fetch when the
+  // user navigates there. Badge counts only "needs attention" orders — once a
+  // kalyanchik delivers, closes or cancels the order it shouldn't keep
+  // pulsing in the bottom nav.
+  const ordersQuery = useQuery({
+    queryKey: [
+      "orders",
+      "by-shortcodes",
+      history.map((o) => o.shortCode).join(","),
+    ],
+    queryFn: () =>
+      fetchOrdersByShortCodes(history.map((o) => o.shortCode)),
+    enabled: mounted && history.length > 0,
+    refetchInterval: 30_000,
+  });
+  const activeOrdersCount = (ordersQuery.data ?? []).filter(
+    (order) =>
+      order.status !== "delivered" &&
+      order.status !== "closed" &&
+      order.status !== "cancelled",
+  ).length;
 
   const badgeFor = (href: string): number => {
     if (!mounted) return 0;
     if (href === "/mixer") return mixCount;
-    if (href === "/orders") return draftCount + ordersCount;
+    if (href === "/orders") return draftCount + activeOrdersCount;
     return 0;
   };
 

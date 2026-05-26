@@ -83,7 +83,13 @@ ON CONFLICT (id) DO NOTHING;
 -- ---------- App settings ----------
 INSERT INTO app_settings (key, value, description) VALUES
   ('default_price',                   '350',  'Базова ціна кальяну в гривнях'),
-  ('max_ingredients_per_mix',         '4',    'Максимальна кількість тютюнів у міксі'),
+  ('refill_price',                    '200',  'Ціна забивки (мікс із собою)'),
+  ('day_loaner_price',                '350',  'Ціна міксу/послуги для кальяну «з собою на день» (₴, без залогу)'),
+  ('day_loaner_deposit',              '1000', 'Застава за кальян «з собою на день» (₴, повертається)'),
+  ('overpack_price',                  '50',   'Доплата за оверпак'),
+  ('overpack_extra_grams',            '4',    'Додаткові грами тютюну при оверпаку (понад звичайних 18)'),
+  ('max_ingredients_per_mix',         '4',    'Максимальна кількість тютюнів у міксі (3-4)'),
+  ('coal_reminder_interval_minutes',  '0',    'Інтервал Telegram-нагадування струсити вугілля для виданих кальянів; 0 вимикає'),
   ('accepting_orders',                'true', 'Глобальний рубильник прийому замовлень'),
   ('telegram_notifications_chat_id',  '""',   'ID Telegram-чату для нотифікацій (заповнити вручну)')
 ON CONFLICT (key) DO NOTHING;

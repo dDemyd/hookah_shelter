@@ -218,6 +218,20 @@
   }
 }
 
+@keyframes ember-rise {
+  0% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(-92px) scale(0.2);
+    opacity: 0;
+  }
+}
+
 @keyframes bubble-up {
   0% {
     transform: translateY(0) scale(0.8);
