@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { BrandedEmptyState } from "../components/BrandedEmptyState";
+import { PresetListSkeleton } from "../components/GuestSkeletons";
 import { MixCard } from "../components/MixCard";
 import { fetchPresetMixes } from "./preset-data";
 
@@ -23,14 +25,15 @@ export function PresetsClient() {
       </div>
 
       {presets.length === 0 && presetsQuery.isLoading ? (
-        <div className="grid gap-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-[180px] animate-pulse rounded-[16px] bg-white/[0.04]"
-            />
-          ))}
-        </div>
+        <PresetListSkeleton />
+      ) : presets.length === 0 ? (
+        <BrandedEmptyState
+          className="pt-10"
+          title="Мікси готуються"
+          body="Фірмові рецепти скоро з'являться тут. Поки можна зібрати власний мікс у конструкторі."
+          actionHref="/mixer"
+          actionLabel="Створити мікс"
+        />
       ) : (
         <div className="grid gap-3">
           {presets.map((mix) => (

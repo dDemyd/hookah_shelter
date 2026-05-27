@@ -82,6 +82,11 @@ function mapPresetRow(row: PresetRow, index: number): PresetMix {
   const ingredients =
     row.preset_mix_ingredients
       ?.filter((item) => item.tobaccos)
+      .filter((item) => {
+        const brand = item.tobaccos?.tobacco_brands;
+        const firstBrand = Array.isArray(brand) ? brand[0] : brand;
+        return firstBrand?.is_active !== false;
+      })
       .map((item) => ({
         percentage: item.percentage,
         tobacco: mapTobaccoRow(item.tobaccos!),
@@ -111,7 +116,7 @@ function mapPresetRow(row: PresetRow, index: number): PresetMix {
 }
 
 const PRESET_SELECT_WITH_MIX_OF_DAY =
-  "id,name,description,image_url,is_signature,is_mix_of_day,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))";
+  "id,name,description,image_url,is_signature,is_mix_of_day,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name,is_active),flavor_categories(name,slug,emoji)))";
 
 const PRESET_SELECT_LEGACY =
   "id,name,description,image_url,is_signature,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))";

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { CatalogTobacco } from "../_catalog-data";
 
 type Props = {
@@ -18,11 +19,13 @@ export function TobaccoPhoto({ item, dim = false }: Props) {
           filter: dim ? "grayscale(0.6) brightness(0.55)" : undefined,
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={item.imageUrl}
           alt={`${item.brand} ${item.flavor}`}
-          className="h-full w-full object-cover"
+          fill
+          sizes="(max-width: 448px) 50vw, 224px"
+          unoptimized
+          className="object-cover"
         />
       </div>
     );

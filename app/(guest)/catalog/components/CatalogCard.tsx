@@ -33,6 +33,7 @@ export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
       <button
         type="button"
         onClick={() => !out && onOpenDetail(item)}
+        aria-label={`Відкрити ${item.brand} ${item.uname}`}
         className="tap relative block w-full p-0"
         disabled={out}
       >
@@ -118,7 +119,8 @@ export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
             onClick={() => !out && onAdd(item)}
             disabled={out}
             aria-label={picked ? "У міксі" : "Додати в мікс"}
-            className="tap flex size-8 items-center justify-center rounded-[10px] text-white"
+            aria-pressed={picked}
+            className="tap flex size-11 items-center justify-center rounded-[12px] text-white disabled:cursor-not-allowed"
             style={{
               background: picked
                 ? item.color

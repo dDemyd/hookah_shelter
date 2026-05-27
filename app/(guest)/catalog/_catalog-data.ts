@@ -114,7 +114,7 @@ type TobaccoRow = {
   in_stock: boolean;
   popularity: number;
   created_at: string;
-  tobacco_brands: { name: string } | { name: string }[] | null;
+  tobacco_brands: { name: string; is_active?: boolean } | { name: string; is_active?: boolean }[] | null;
   flavor_categories:
     | { name: string; slug: string; emoji: string | null }
     | { name: string; slug: string; emoji: string | null }[]
@@ -162,9 +162,10 @@ export async function fetchCatalogTobaccos(): Promise<CatalogTobacco[]> {
   const { data, error } = await supabase
     .from("tobaccos")
     .select(
-      "id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)",
+      "id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands!inner(name,is_active),flavor_categories(name,slug,emoji)",
     )
     .eq("is_active", true)
+    .eq("tobacco_brands.is_active", true)
     .order("in_stock", { ascending: false })
     .order("popularity", { ascending: false });
 

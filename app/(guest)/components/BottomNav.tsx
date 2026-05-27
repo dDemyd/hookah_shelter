@@ -67,6 +67,7 @@ export function BottomNav() {
 
   return (
     <nav
+      aria-label="Основна навігація"
       className="fixed inset-x-0 bottom-0 z-40 border-t pb-[18px] backdrop-blur-xl"
       style={{
         background:
@@ -88,8 +89,10 @@ export function BottomNav() {
               )}
               <Link
                 href={href}
+                aria-current={active ? "page" : undefined}
+                aria-label={badge > 0 ? `${label}, ${badge} активних` : label}
                 className={cn(
-                  "tap flex flex-col items-center gap-1 px-1 pt-2.5 pb-1.5 text-[10px] font-semibold tracking-[0.2px] transition-colors",
+                  "tap flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-1 pt-2.5 pb-1.5 text-[10px] font-semibold tracking-[0.2px] transition-colors",
                   active ? "text-[#ff4500]" : "text-[#666] hover:text-white",
                 )}
               >

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { AdminSidebar } from "./AdminSidebar";
+import { AdminMobileNav, AdminSidebar } from "./AdminSidebar";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -19,7 +19,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh bg-background text-foreground">
       <AdminSidebar />
-      <main className="flex-1 overflow-x-hidden p-6">{children}</main>
+      <AdminMobileNav />
+      <main className="flex-1 overflow-x-hidden p-4 pt-20 md:p-6">{children}</main>
     </div>
   );
 }

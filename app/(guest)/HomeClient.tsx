@@ -75,7 +75,7 @@ export function HomeClient() {
       <Hero />
 
       <SectionHeader
-        kicker="Від кальянщика"
+        kicker="Від закладу"
         title="Фірмові мікси бару"
         actionHref="/presets"
       />
