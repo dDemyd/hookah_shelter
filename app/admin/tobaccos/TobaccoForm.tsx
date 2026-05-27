@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type BrandOption = { id: string; name: string };
+type BrandOption = { id: string; name: string; is_active: boolean };
 type CategoryOption = { id: string; name: string };
 
 type TobaccoRecord = {
@@ -84,7 +84,7 @@ export function TobaccoForm({ tobaccoId }: { tobaccoId?: string }) {
     queryKey: ["admin-tobacco-form-options"],
     queryFn: async () => {
       const [brandsResult, categoriesResult] = await Promise.all([
-        supabase.from("tobacco_brands").select("id,name").order("name", { ascending: true }),
+        supabase.from("tobacco_brands").select("id,name,is_active").order("name", { ascending: true }),
         supabase.from("flavor_categories").select("id,name").order("sort_order", { ascending: true }),
       ]);
       if (brandsResult.error) throw brandsResult.error;
@@ -219,6 +219,7 @@ function TobaccoFormBody({
                 {brands.map((brand) => (
                   <option key={brand.id} value={brand.id}>
                     {brand.name}
+                    {!brand.is_active ? " (приховано)" : ""}
                   </option>
                 ))}
               </select>

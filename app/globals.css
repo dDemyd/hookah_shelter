@@ -61,6 +61,24 @@
   --color-bg-card: #161212;
   --color-bg-card-2: #1c1815;
   --color-line: rgba(255, 255, 255, 0.06);
+  --color-shelter-canvas: #0a0a0a;
+  --color-shelter-surface: #141010;
+  --color-shelter-surface-raised: #1a1410;
+  --color-shelter-surface-soft: rgba(255, 255, 255, 0.04);
+  --color-shelter-border: rgba(255, 255, 255, 0.06);
+  --color-shelter-border-strong: rgba(255, 255, 255, 0.12);
+  --color-shelter-text-muted: #888888;
+  --color-shelter-text-faint: #666666;
+  --color-shelter-fire: #ff4500;
+  --color-shelter-fire-soft: #ff6a1f;
+  --color-shelter-fire-bright: #ff8a3d;
+  --color-shelter-ember: #ffb070;
+  --radius-shelter-control: 0.75rem;
+  --radius-shelter-card: 0.875rem;
+  --radius-shelter-sheet: 1.5rem;
+  --shadow-shelter-ember: 0 8px 28px rgba(255, 69, 0, 0.34);
+  --shadow-shelter-card: 0 20px 40px -16px rgba(0, 0, 0, 0.6);
+  --shadow-shelter-sheet: 0 -20px 60px rgba(0, 0, 0, 0.6);
 }
 
 :root {
@@ -145,6 +163,10 @@
   html {
     @apply font-sans;
     -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
   }
 }
 
@@ -267,6 +289,46 @@
 }
 .tap:active {
   transform: scale(0.97);
+}
+
+.shelter-surface {
+  background: var(--color-shelter-surface);
+  border: 1px solid var(--color-shelter-border);
+}
+
+.shelter-surface-raised {
+  background: var(--color-shelter-surface-raised);
+  border: 1px solid var(--color-shelter-border);
+  box-shadow: var(--shadow-shelter-card);
+}
+
+.shelter-cta {
+  background: linear-gradient(
+    180deg,
+    var(--color-shelter-fire-soft) 0%,
+    var(--color-shelter-fire) 100%
+  );
+  box-shadow: var(--shadow-shelter-ember);
+}
+
+.shelter-soft-control {
+  background: var(--color-shelter-surface-soft);
+  border: 1px solid var(--color-shelter-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .tap:active {
+    transform: none;
+  }
 }
 
 .no-scrollbar::-webkit-scrollbar {

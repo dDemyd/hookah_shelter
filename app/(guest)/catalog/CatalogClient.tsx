@@ -28,6 +28,8 @@ import { OptionSheet } from "./components/OptionSheet";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { StrengthRangeSlider } from "./components/StrengthRangeSlider";
 import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
+import { BrandedEmptyState } from "../components/BrandedEmptyState";
+import { CatalogGridSkeleton } from "../components/GuestSkeletons";
 
 export function CatalogClient() {
   const params = useSearchParams();
@@ -51,10 +53,12 @@ export function CatalogClient() {
     queryFn: fetchCatalogCategories,
   });
 
-  const catalog =
-    catalogQuery.data && catalogQuery.data.length > 0
-      ? catalogQuery.data
-      : TOBACCO_CATALOG;
+  const catalog = useMemo(() => {
+    if (catalogQuery.data && catalogQuery.data.length > 0) {
+      return catalogQuery.data;
+    }
+    return catalogQuery.isError ? TOBACCO_CATALOG : [];
+  }, [catalogQuery.data, catalogQuery.isError]);
   const categories =
     categoriesQuery.data && categoriesQuery.data.length > 0
       ? categoriesQuery.data
@@ -195,9 +199,15 @@ export function CatalogClient() {
       {/* Count + reset */}
       <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
         <div className="text-[12px] font-medium whitespace-nowrap text-[#888]">
-          Знайдено{" "}
-          <span className="font-bold text-white">{filtered.length}</span>{" "}
-          {pluralForm(filtered.length, ["смак", "смаки", "смаків"])}
+          {catalogQuery.isLoading && !catalogQuery.data ? (
+            "Завантажую каталог..."
+          ) : (
+            <>
+              Знайдено{" "}
+              <span className="font-bold text-white">{filtered.length}</span>{" "}
+              {pluralForm(filtered.length, ["смак", "смаки", "смаків"])}
+            </>
+          )}
         </div>
         {hasActiveFilters && (
           <button
@@ -211,14 +221,16 @@ export function CatalogClient() {
       </div>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
-        <div className="px-[22px] py-16 text-center text-[#666]">
-          <div className="mb-2 text-[36px] opacity-60">🪫</div>
-          <div className="mb-1 text-[14px] font-semibold text-[#aaa]">
-            Нічого не знайдено
-          </div>
-          <div className="text-[12px] text-[#666]">Спробуй послабити фільтри</div>
-        </div>
+      {catalogQuery.isLoading && !catalogQuery.data ? (
+        <CatalogGridSkeleton />
+      ) : filtered.length === 0 ? (
+        <BrandedEmptyState
+          className="pt-12"
+          title="Нічого не знайдено"
+          body="Спробуй послабити фільтри або повернутися до всього каталогу."
+          actionLabel="Скинути фільтри"
+          onAction={resetFilters}
+        />
       ) : (
         <div className="grid grid-cols-2 gap-2.5 px-4">
           {filtered.map((t) => (

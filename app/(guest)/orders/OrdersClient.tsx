@@ -31,6 +31,8 @@ import {
   fetchOrdersByShortCodes,
   type OrderView,
 } from "../order/order-data";
+import { BrandedEmptyState } from "../components/BrandedEmptyState";
+import { OrdersListSkeleton } from "../components/GuestSkeletons";
 
 type Tab = "all" | "drafts" | "ordered";
 
@@ -162,6 +164,9 @@ export function OrdersClient() {
   const isEmpty =
     (showDrafts ? drafts.length === 0 : true) &&
     (showOrdered ? orders.length === 0 : true);
+  const isLoadingList =
+    (catalogQuery.isLoading && drafts.length > 0 && !catalogQuery.data) ||
+    (ordersQuery.isLoading && showOrdered && history.length > 0);
 
   return (
     <div className="relative mx-auto w-full max-w-md pt-[132px] pb-28">
@@ -208,7 +213,9 @@ export function OrdersClient() {
 
       <FilterChips value={tab} onChange={setTab} counts={counts} />
 
-      {isEmpty ? (
+      {isLoadingList ? (
+        <OrdersListSkeleton />
+      ) : isEmpty ? (
         <EmptyState tab={tab} />
       ) : (
         <div className="flex flex-col gap-3 px-4">
@@ -369,37 +376,18 @@ function EmptyState({ tab }: { tab: Tab }) {
     ],
     ordered: [
       "Замовлень поки немає",
-      "Замовиш — і ми покажемо, на якому етапі бармен.",
+      "Замовиш — і ми покажемо, на якому етапі кальян.",
     ],
   };
   const [title, body] = lines[tab];
 
   return (
-    <div className="px-[22px] pt-16 pb-8 text-center">
-      <div
-        className="mx-auto mb-5 flex size-24 items-center justify-center rounded-full text-[40px]"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(255,69,0,0.12), transparent 70%)",
-        }}
-      >
-        📭
-      </div>
-      <div className="mb-2 text-[17px] font-bold text-white">{title}</div>
-      <div className="mx-auto max-w-[280px] text-[13px] leading-snug text-balance text-[#666]">
-        {body}
-      </div>
-      <a
-        href="/mixer"
-        className="tap mt-5 inline-flex items-center gap-2 rounded-[14px] px-6 py-3.5 text-[14px] font-bold text-white"
-        style={{
-          background: "linear-gradient(180deg, #ff6a1f, #ff4500)",
-          boxShadow: "0 6px 20px rgba(255,69,0,0.35)",
-        }}
-      >
-        Створити мікс →
-      </a>
-    </div>
+    <BrandedEmptyState
+      title={title}
+      body={body}
+      actionHref="/mixer"
+      actionLabel="Створити мікс"
+    />
   );
 }
 

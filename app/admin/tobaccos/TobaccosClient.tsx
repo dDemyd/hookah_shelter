@@ -27,7 +27,7 @@ type Tobacco = {
   is_active: boolean;
   popularity: number;
   created_at: string;
-  tobacco_brands: Relation<{ name: string }>;
+  tobacco_brands: Relation<{ name: string; is_active: boolean }>;
   flavor_categories: Relation<{ name: string }>;
 };
 
@@ -56,7 +56,7 @@ export function TobaccosClient() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tobaccos")
-        .select("id,brand_id,category_id,name,description,strength,smoke,image_url,color,in_stock,is_active,popularity,created_at,tobacco_brands(name),flavor_categories(name)")
+        .select("id,brand_id,category_id,name,description,strength,smoke,image_url,color,in_stock,is_active,popularity,created_at,tobacco_brands(name,is_active),flavor_categories(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Tobacco[];
@@ -67,7 +67,7 @@ export function TobaccosClient() {
     queryKey: ["admin-tobacco-list-options"],
     queryFn: async () => {
       const [brandsResult, categoriesResult] = await Promise.all([
-        supabase.from("tobacco_brands").select("id,name").order("name", { ascending: true }),
+        supabase.from("tobacco_brands").select("id,name,is_active").order("name", { ascending: true }),
         supabase.from("flavor_categories").select("id,name").order("sort_order", { ascending: true }),
       ]);
       if (brandsResult.error) throw brandsResult.error;
@@ -164,7 +164,8 @@ export function TobaccosClient() {
             <span className="text-right">Дії</span>
           </div>
           {filtered.map((tobacco) => {
-            const brand = firstRelation(tobacco.tobacco_brands)?.name ?? "Без бренду";
+            const brandRecord = firstRelation(tobacco.tobacco_brands);
+            const brand = brandRecord?.name ?? "Без бренду";
             const category = firstRelation(tobacco.flavor_categories)?.name ?? "Без категорії";
             return (
               <div key={tobacco.id} className="grid grid-cols-[72px_1fr_130px_130px_80px_80px_180px_90px] items-center gap-3 border-b px-4 py-3 last:border-b-0">
@@ -178,7 +179,12 @@ export function TobaccosClient() {
                   <p className="font-medium">{tobacco.name}</p>
                   <p className="line-clamp-1 text-sm text-muted-foreground">{tobacco.description ?? "Без опису"}</p>
                 </div>
-                <span className="text-sm">{brand}</span>
+                <span className="text-sm">
+                  {brand}
+                  {brandRecord?.is_active === false ? (
+                    <span className="ml-1 text-xs text-muted-foreground">(бренд приховано)</span>
+                  ) : null}
+                </span>
                 <span className="text-sm">{category}</span>
                 <span className="text-sm">{tobacco.strength}/{TOBACCO_MAX_STRENGTH}</span>
                 <span className="text-sm">{tobacco.smoke}/5</span>
@@ -186,6 +192,7 @@ export function TobaccosClient() {
                   {isNew(tobacco.created_at) ? <Badge>Новий</Badge> : null}
                   <Badge variant={tobacco.in_stock ? "secondary" : "outline"}>{tobacco.in_stock ? "В наявності" : "Немає"}</Badge>
                   {!tobacco.is_active ? <Badge variant="outline">Приховано</Badge> : null}
+                  {brandRecord?.is_active === false ? <Badge variant="outline">Бренд приховано</Badge> : null}
                 </div>
                 <div className="flex justify-end gap-1">
                   <Link

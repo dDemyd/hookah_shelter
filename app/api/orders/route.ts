@@ -75,7 +75,7 @@ type TobaccoSnapshotRow = {
   in_stock: boolean;
   is_active: boolean;
   popularity: number;
-  tobacco_brands: { name: string } | { name: string }[] | null;
+  tobacco_brands: { name: string; is_active?: boolean } | { name: string; is_active?: boolean }[] | null;
   flavor_categories: { name: string; slug: string } | { name: string; slug: string }[] | null;
 };
 
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
   const { data: tobaccos, error: tobaccoError } = await supabase
     .from("tobaccos")
     .select(
-      "id,name,strength,in_stock,is_active,popularity,tobacco_brands(name),flavor_categories(name,slug)",
+      "id,name,strength,in_stock,is_active,popularity,tobacco_brands(name,is_active),flavor_categories(name,slug)",
     )
     .in("id", tobaccoIds);
 
@@ -217,7 +217,8 @@ export async function POST(request: Request) {
   );
   const unavailable = ingredients.find((item) => {
     const tobacco = tobaccoById.get(item.tobaccoId);
-    return !tobacco || !tobacco.is_active || !tobacco.in_stock;
+    const brand = tobacco ? firstRelation(tobacco.tobacco_brands) : null;
+    return !tobacco || !tobacco.is_active || !tobacco.in_stock || brand?.is_active === false;
   });
   if (unavailable) {
     return NextResponse.json(

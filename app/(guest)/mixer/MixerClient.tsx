@@ -28,7 +28,13 @@ import { useDraftsStore } from "@/lib/stores/drafts-store";
 
 type Pick = CatalogTobacco & { pct: number };
 
-function HookahVisualizer({ picks }: { picks: Pick[] }) {
+function HookahVisualizer({
+	picks,
+	onOpenPicker,
+}: {
+	picks: Pick[];
+	onOpenPicker: () => void;
+}) {
 	const active = picks.length > 0;
 	const total = picks.reduce((sum, pick) => sum + pick.pct, 0);
 	const cavityX = 116;
@@ -44,7 +50,12 @@ function HookahVisualizer({ picks }: { picks: Pick[] }) {
 	});
 
 	return (
-		<div className="relative flex h-[360px] w-full items-end justify-center overflow-visible">
+		<button
+			type="button"
+			onClick={onOpenPicker}
+			className="tap relative flex h-[360px] w-full items-end justify-center overflow-visible rounded-[24px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff4500]"
+			aria-label="Відкрити список тютюнів"
+		>
 			<div className="pointer-events-none absolute bottom-[-6px] left-1/2 h-[70px] w-[280px] -translate-x-1/2">
 				<svg width="100%" height="100%" viewBox="0 0 280 70">
 					<defs>
@@ -181,7 +192,7 @@ function HookahVisualizer({ picks }: { picks: Pick[] }) {
 					</div>
 				</div>
 			)}
-		</div>
+		</button>
 	);
 }
 
@@ -551,11 +562,24 @@ function PickerSheet({
 				style={{
 					opacity: open ? 1 : 0,
 					pointerEvents: open ? "auto" : "none",
+					visibility: open ? "visible" : "hidden",
+					transition: open
+						? "opacity 220ms ease-out"
+						: "opacity 180ms ease-in, visibility 0s linear 180ms",
 				}}
 			/>
 			<div
-				className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[85dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
-				style={{ transform: open ? "translateY(0)" : "translateY(100%)" }}
+				aria-hidden={!open}
+				inert={open ? undefined : true}
+				className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[85dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)]"
+				style={{
+					transform: open ? "translateY(0)" : "translateY(100%)",
+					visibility: open ? "visible" : "hidden",
+					transition: open
+						? "transform 300ms ease-out"
+						: "transform 240ms ease-in, visibility 0s linear 240ms",
+					willChange: "transform",
+				}}
 			>
 				<div className="flex justify-center py-2.5">
 					<div className="h-1 w-10 rounded-full bg-white/20" />
@@ -752,7 +776,7 @@ export function MixerClient() {
 
 			<div className="no-scrollbar absolute inset-0 overflow-y-auto overflow-x-hidden pt-[100px] pb-28">
 				<div className="px-[22px] pt-1 pb-2">
-					<HookahVisualizer picks={picks} />
+					<HookahVisualizer picks={picks} onOpenPicker={() => setPickerOpen(true)} />
 				</div>
 
 				<div className="mx-[22px] mt-2 rounded-[14px] border border-white/[0.05] bg-[#141010]/70 px-3.5 py-3 backdrop-blur">

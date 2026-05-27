@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { PresetMix } from "../presets/preset-data";
 import { SmokeLayer } from "./SmokeLayer";
@@ -18,10 +19,12 @@ export function MixCard({ mix }: { mix: PresetMix }) {
       }}
     >
       {mix.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={mix.imageUrl}
-          alt=""
+          alt={`Фото міксу ${mix.name}`}
+          fill
+          sizes="240px"
+          unoptimized
           className="absolute inset-0 size-full object-cover opacity-55"
         />
       ) : null}
