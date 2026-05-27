@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -179,7 +180,7 @@ export function TobaccosClient() {
                 </div>
                 <span className="text-sm">{brand}</span>
                 <span className="text-sm">{category}</span>
-                <span className="text-sm">{tobacco.strength}/5</span>
+                <span className="text-sm">{tobacco.strength}/{TOBACCO_MAX_STRENGTH}</span>
                 <span className="text-sm">{tobacco.smoke}/5</span>
                 <div className="flex flex-wrap gap-1">
                   {isNew(tobacco.created_at) ? <Badge>Новий</Badge> : null}

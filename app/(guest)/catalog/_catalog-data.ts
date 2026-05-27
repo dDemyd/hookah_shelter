@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 
 export type CatalogTobacco = {
   id: string;
@@ -144,7 +145,7 @@ export function mapTobaccoRow(row: TobaccoRow): CatalogTobacco {
     flavor: row.name,
     uname: row.name,
     cat,
-    strength: row.strength,
+    strength: Math.min(TOBACCO_MAX_STRENGTH, row.strength),
     smoke: row.smoke ?? 4,
     imageUrl: row.image_url,
     color,

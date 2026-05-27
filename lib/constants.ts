@@ -9,8 +9,12 @@ export const MAX_INGREDIENTS_PER_MIX = MAX_INGREDIENTS_LIMIT;
 /** Minimum share a single tobacco can occupy in a mix. */
 export const MIN_PERCENT_PER_SLOT = 10;
 
-/** Strength scale shown on tobacco cards and the mixer meter. */
-export const MAX_STRENGTH = 12;
+/** Strength scale for a single tobacco flavor. Mixes can go higher via overpack. */
+export const TOBACCO_MAX_STRENGTH = 10;
+/** Strength scale shown for a finished mix. Overpack can push a 10/10 mix to 12/12. */
+export const MIX_MAX_STRENGTH = 12;
+/** Backwards-compatible alias for mix strength scale. */
+export const MAX_STRENGTH = MIX_MAX_STRENGTH;
 
 export const DEFAULT_PRICE_UAH = 350;
 export const REFILL_PRICE_UAH = 200;
@@ -44,7 +48,7 @@ export const SERVICE_TYPE_PRICES: Record<ServiceType, number> = {
 };
 
 /** Холодок (cool/menthol) intensity scale used by the mixer add-on. */
-export const COOL_MAX_INTENSITY = 5;
+export const COOL_MAX_INTENSITY = 3;
 export const COOL_MIN_INTENSITY = 1;
 
 export const ORDER_STATUSES = [

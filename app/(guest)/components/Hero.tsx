@@ -3,22 +3,13 @@ import { CoalIcon, FlaskIcon } from "./Icon";
 
 export function Hero() {
   return (
-    <div className="relative overflow-hidden px-[22px] pt-5 pb-7">
+    <div className="relative overflow-hidden px-[22px] pt-14 pb-10">
       {/* Glowing coal ember */}
       <div
-        className="animate-ember-flicker pointer-events-none absolute -top-8 -right-8 size-[180px]"
+        className="animate-ember-flicker pointer-events-none absolute -top-1 -right-8 size-[180px]"
         aria-hidden
       >
         <CoalIcon size={180} />
-      </div>
-
-      {/* Kicker */}
-      <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[3px] text-[#ff4500] opacity-90">
-        <span
-          className="mr-2 inline-block size-1.5 rounded-full align-middle"
-          style={{ background: "#ff4500", boxShadow: "0 0 8px #ff4500" }}
-        />
-        Вечір у Сховищі
       </div>
 
       <h1 className="m-0 text-[38px] leading-[1.05] font-extrabold tracking-[-1.2px] text-white text-balance">
@@ -43,10 +34,10 @@ export function Hero() {
         className="mt-2.5 mb-5 max-w-[280px] text-[14.5px] leading-[1.45] text-balance"
         style={{ color: "#888" }}
       >
-        Або обери з фірмових міксів бару — зібрані нашими кальянщиками за роки практики.
+        Або обери з фірмових міксів бару — зібрані нашими кальянними майстрами за роки практики
       </p>
 
-      <div className="flex gap-2.5">
+      <div className="flex gap-2.5 mt-10">
         <Link
           href="/mixer"
           className="animate-ember-pulse tap relative flex h-[52px] flex-1 items-center justify-center gap-2 overflow-hidden rounded-[14px] text-[15px] font-bold tracking-[0.2px] text-white"

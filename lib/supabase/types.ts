@@ -232,6 +232,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          is_mix_of_day: boolean
           is_new: boolean
           is_signature: boolean
           name: string
@@ -244,6 +245,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_mix_of_day?: boolean
           is_new?: boolean
           is_signature?: boolean
           name: string
@@ -256,6 +258,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_mix_of_day?: boolean
           is_new?: boolean
           is_signature?: boolean
           name?: string

@@ -22,6 +22,7 @@ type PresetRecord = {
   description: string | null;
   image_url: string | null;
   is_signature: boolean;
+  is_mix_of_day: boolean;
   is_new: boolean;
   is_active: boolean;
   sort_order: number;
@@ -43,6 +44,7 @@ type PresetFormState = {
   description: string;
   image_url: string;
   is_signature: boolean;
+  is_mix_of_day: boolean;
   is_new: boolean;
   is_active: boolean;
   sort_order: string;
@@ -54,6 +56,7 @@ const emptyForm: PresetFormState = {
   description: "",
   image_url: "",
   is_signature: true,
+  is_mix_of_day: false,
   is_new: false,
   is_active: true,
   sort_order: "0",
@@ -72,6 +75,7 @@ function toFormState(record: PresetRecord | null): PresetFormState {
     description: record.description ?? "",
     image_url: record.image_url ?? "",
     is_signature: record.is_signature,
+    is_mix_of_day: record.is_mix_of_day,
     is_new: record.is_new,
     is_active: record.is_active,
     sort_order: String(record.sort_order),
@@ -106,7 +110,7 @@ export function PresetForm({ presetId }: { presetId?: string }) {
       if (!presetId) throw new Error("Missing preset id.");
       const { data, error } = await supabase
         .from("preset_mixes")
-        .select("name,description,image_url,is_signature,is_new,is_active,sort_order,preset_mix_ingredients(tobacco_id,percentage)")
+        .select("name,description,image_url,is_signature,is_mix_of_day,is_new,is_active,sort_order,preset_mix_ingredients(tobacco_id,percentage)")
         .eq("id", presetId)
         .single();
       if (error) throw error;
@@ -170,10 +174,19 @@ function PresetFormBody({
         description: form.description.trim() || null,
         image_url: form.image_url.trim() || null,
         is_signature: form.is_signature,
+        is_mix_of_day: form.is_mix_of_day,
         is_new: form.is_new,
         is_active: form.is_active,
         sort_order: Number.parseInt(form.sort_order, 10) || 0,
       };
+
+      if (form.is_mix_of_day) {
+        const resetResult = await supabase
+          .from("preset_mixes")
+          .update({ is_mix_of_day: false })
+          .eq("is_mix_of_day", true);
+        if (resetResult.error) throw resetResult.error;
+      }
 
       const presetResult = presetId
         ? await supabase.from("preset_mixes").update(payload).eq("id", presetId).select("id").single()
@@ -262,6 +275,10 @@ function PresetFormBody({
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.is_signature} onChange={(event) => setForm((current) => ({ ...current, is_signature: event.target.checked }))} />
             Фірмовий
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.is_mix_of_day} onChange={(event) => setForm((current) => ({ ...current, is_mix_of_day: event.target.checked }))} />
+            Мікс дня
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.is_new} onChange={(event) => setForm((current) => ({ ...current, is_new: event.target.checked }))} />

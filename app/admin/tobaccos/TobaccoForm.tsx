@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type BrandOption = { id: string; name: string };
@@ -169,11 +170,11 @@ function TobaccoFormBody({
         !payload.brand_id ||
         !payload.name ||
         payload.strength < 1 ||
-        payload.strength > 12 ||
+        payload.strength > TOBACCO_MAX_STRENGTH ||
         payload.smoke < 1 ||
         payload.smoke > 5
       ) {
-        throw new Error("Заповніть бренд, назву, міцність (1–12) і димність (1–5).");
+        throw new Error(`Заповніть бренд, назву, міцність (1–${TOBACCO_MAX_STRENGTH}) і димність (1–5).`);
       }
 
       const query = tobaccoId
@@ -240,7 +241,7 @@ function TobaccoFormBody({
             </div>
             <div className="space-y-2">
               <Label htmlFor="tobacco-strength">Міцність</Label>
-              <Input id="tobacco-strength" type="number" min={1} max={12} value={form.strength} onChange={(event) => setForm((current) => ({ ...current, strength: event.target.value }))} />
+              <Input id="tobacco-strength" type="number" min={1} max={TOBACCO_MAX_STRENGTH} value={form.strength} onChange={(event) => setForm((current) => ({ ...current, strength: event.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tobacco-smoke">Димність</Label>

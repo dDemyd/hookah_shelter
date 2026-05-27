@@ -17,14 +17,26 @@ export function MixCard({ mix }: { mix: PresetMix }) {
         scrollSnapAlign: "start",
       }}
     >
+      {mix.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mix.imageUrl}
+          alt=""
+          className="absolute inset-0 size-full object-cover opacity-55"
+        />
+      ) : null}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/62" />
       <SmokeLayer opacity={0.85} />
-
-      <div
-        className="absolute top-[18px] right-[18px] text-[28px] font-light leading-none"
-        style={{ color: "rgba(255,255,255,0.18)" }}
-      >
-        {mix.glyph}
-      </div>
+      {mix.isMixOfDay ? (
+        <div className="absolute top-3 left-3 rounded px-2 py-1 text-[9px] font-bold tracking-[1.2px] text-white uppercase backdrop-blur"
+          style={{
+            background: "rgba(255,69,0,0.92)",
+            boxShadow: "0 0 14px rgba(255,69,0,0.35)",
+          }}
+        >
+          Мікс дня
+        </div>
+      ) : null}
 
       {/* Smoke wisp */}
       <svg
@@ -60,16 +72,16 @@ export function MixCard({ mix }: { mix: PresetMix }) {
         </div>
 
         <div
-          className="flex items-center justify-between border-t pt-3.5"
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border-t pt-3.5"
           style={{ borderColor: "rgba(255,255,255,0.08)" }}
         >
-          <div>
+          <div className="min-w-0">
             <div className="mb-1 text-[9px] uppercase tracking-[1.5px] text-[#888]">
               Міцність
             </div>
-            <StrengthMeter value={mix.strength} tickWidth={12} />
+            <StrengthMeter value={mix.strength} tickWidth={6} tickHeight={4} gap={3} />
           </div>
-          <div className="text-[18px] font-bold text-[#ff4500]">
+          <div className="shrink-0 text-right text-[17px] font-bold tabular-nums text-[#ff4500]">
             {mix.price}
             <span className="text-[12px] opacity-70">₴</span>
           </div>

@@ -37,11 +37,25 @@ export function PresetDetailClient({ id }: { id: string }) {
         className="relative overflow-hidden rounded-[18px] px-5 pt-8 pb-6 text-white"
         style={{ background: preset.accent }}
       >
-        <div className="absolute top-5 right-5 text-[34px] text-white/20">
-          {preset.glyph}
-        </div>
-        <div className="text-[10px] font-bold tracking-[2.4px] text-[#ff8a3d] uppercase">
-          Фірмовий мікс
+        {preset.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={preset.imageUrl}
+            alt=""
+            className="absolute inset-0 size-full object-cover opacity-50"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/18 via-black/8 to-black/60" />
+        <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-[10px] font-bold tracking-[2.4px] text-[#ff8a3d] uppercase">
+            Фірмовий мікс
+          </div>
+          {preset.isMixOfDay ? (
+            <div className="rounded bg-[#ff4500] px-2 py-0.5 text-[9px] font-bold tracking-[1px] text-white uppercase">
+              Мікс дня
+            </div>
+          ) : null}
         </div>
         <h1 className="mt-2 font-display text-[44px] leading-none font-semibold">
           {preset.name}
@@ -60,6 +74,7 @@ export function PresetDetailClient({ id }: { id: string }) {
             {preset.price}
             <span className="text-[13px] text-white/60">₴</span>
           </div>
+        </div>
         </div>
       </div>
 

@@ -22,18 +22,19 @@ import { CatalogTopBar } from "./components/CatalogTopBar";
 import { Chip } from "./components/Chip";
 import { DetailSheet } from "./components/DetailSheet";
 import { DropdownTrigger } from "./components/DropdownTrigger";
+import { GuestFooter } from "../components/GuestFooter";
 import { MixFAB } from "./components/MixFAB";
 import { OptionSheet } from "./components/OptionSheet";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { StrengthRangeSlider } from "./components/StrengthRangeSlider";
-import { MAX_STRENGTH } from "@/lib/constants";
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 
 export function CatalogClient() {
   const params = useSearchParams();
   const [cat, setCat] = useState<string>(() => params.get("cat") ?? "all");
   const [newOnly, setNewOnly] = useState<boolean>(() => params.get("new") === "1");
   const [brand, setBrand] = useState<string>("Усі");
-  const [strRange, setStrRange] = useState<[number, number]>([1, MAX_STRENGTH]);
+  const [strRange, setStrRange] = useState<[number, number]>([1, TOBACCO_MAX_STRENGTH]);
   const [sortBy, setSortBy] = useState<SortBy>("popular");
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -123,14 +124,14 @@ export function CatalogClient() {
     cat !== "all" ||
     brand !== "Усі" ||
     strRange[0] !== 1 ||
-    strRange[1] !== MAX_STRENGTH ||
+    strRange[1] !== TOBACCO_MAX_STRENGTH ||
     query !== "" ||
     newOnly;
 
   const resetFilters = () => {
     setCat("all");
     setBrand("Усі");
-    setStrRange([1, MAX_STRENGTH]);
+    setStrRange([1, TOBACCO_MAX_STRENGTH]);
     setQuery("");
     setNewOnly(false);
   };
@@ -179,14 +180,14 @@ export function CatalogClient() {
               🔥 Міцність
             </span>
             <span className="text-[12px] font-bold whitespace-nowrap text-[#ff8a3d]">
-              {strRange[0]} – {strRange[1]} з {MAX_STRENGTH}
+              {strRange[0]} – {strRange[1]} з {TOBACCO_MAX_STRENGTH}
             </span>
           </div>
           <StrengthRangeSlider
             value={strRange}
             onChange={setStrRange}
             min={1}
-            max={MAX_STRENGTH}
+            max={TOBACCO_MAX_STRENGTH}
           />
         </div>
       </div>
@@ -238,9 +239,7 @@ export function CatalogClient() {
         </div>
       )}
 
-      <div className="px-[22px] pt-6 pb-5 text-center text-[11px] tracking-[1.5px] uppercase text-[#444]">
-        Сховище · Біла Церква
-      </div>
+      <GuestFooter />
 
       <MixFAB count={slots.length} />
 

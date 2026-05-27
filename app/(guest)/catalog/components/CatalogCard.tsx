@@ -1,5 +1,6 @@
 "use client";
 
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 import { CheckIcon, PlusIcon } from "../../components/Icon";
 import { StrengthMeter } from "../../components/StrengthMeter";
 import type { CatalogTobacco } from "../_catalog-data";
@@ -92,7 +93,13 @@ export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
         </div>
 
         <div className="mb-2.5 flex items-center gap-2">
-          <StrengthMeter value={item.strength} tickWidth={9} tickHeight={3} />
+          <StrengthMeter
+            value={item.strength}
+            max={TOBACCO_MAX_STRENGTH}
+            tickWidth={7}
+            tickHeight={3}
+            gap={3}
+          />
         </div>
 
         <div className="flex items-center justify-between">

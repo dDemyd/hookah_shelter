@@ -15,6 +15,7 @@ type PresetRow = {
   description: string | null;
   image_url: string | null;
   is_signature: boolean;
+  is_mix_of_day: boolean;
   is_new: boolean;
   is_active: boolean;
   sort_order: number;
@@ -31,6 +32,12 @@ type PresetRow = {
     | null;
 };
 
+const ADMIN_PRESET_SELECT_WITH_MIX_OF_DAY =
+  "id,name,description,image_url,is_signature,is_mix_of_day,is_new,is_active,sort_order,preset_mix_ingredients(percentage,tobaccos(name,tobacco_brands(name)))";
+
+const ADMIN_PRESET_SELECT_LEGACY =
+  "id,name,description,image_url,is_signature,is_new,is_active,sort_order,preset_mix_ingredients(percentage,tobaccos(name,tobacco_brands(name)))";
+
 function firstRelation<T>(value: T | T[] | null): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
@@ -43,14 +50,23 @@ export function PresetsClient() {
   const presetsQuery = useQuery({
     queryKey: ["admin-presets"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const result = await supabase
         .from("preset_mixes")
-        .select(
-          "id,name,description,image_url,is_signature,is_new,is_active,sort_order,preset_mix_ingredients(percentage,tobaccos(name,tobacco_brands(name)))",
-        )
+        .select(ADMIN_PRESET_SELECT_WITH_MIX_OF_DAY)
         .eq("is_active", true)
+        .order("is_mix_of_day", { ascending: false })
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false });
+
+      const { data, error } = result.error
+        ? await supabase
+            .from("preset_mixes")
+            .select(ADMIN_PRESET_SELECT_LEGACY)
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: false })
+        : result;
+
       if (error) throw error;
       return data as unknown as PresetRow[];
     },
@@ -108,6 +124,7 @@ export function PresetsClient() {
               <div>
                 <div className="flex flex-wrap items-center gap-1">
                   <p className="font-medium">{preset.name}</p>
+                  {preset.is_mix_of_day ? <Badge>Мікс дня</Badge> : null}
                   {preset.is_signature ? <Badge variant="secondary">Фірмовий</Badge> : null}
                   {preset.is_new ? <Badge>Новий</Badge> : null}
                 </div>

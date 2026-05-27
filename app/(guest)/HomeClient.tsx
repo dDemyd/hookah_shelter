@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CATEGORIES, FRESH_TOBACCOS } from "./_mock-data";
 import { CategoryCard } from "./components/CategoryCard";
 import { FreshTobaccosRow } from "./components/FreshTobaccosRow";
+import { GuestFooter } from "./components/GuestFooter";
 import { Hero } from "./components/Hero";
 import { HScroll } from "./components/HScroll";
 import { MixCard } from "./components/MixCard";
@@ -111,9 +112,7 @@ export function HomeClient() {
         </div>
       )}
 
-      <div className="px-[22px] pt-6 pb-5 text-center text-[11px] tracking-[1.5px] uppercase text-[#444]">
-        Сховище · Біла Церква
-      </div>
+      <GuestFooter />
     </div>
   );
 }

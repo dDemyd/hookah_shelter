@@ -1,4 +1,4 @@
-import { MAX_STRENGTH } from "@/lib/constants";
+import { MIX_MAX_STRENGTH } from "@/lib/constants";
 
 type Props = {
   value: number;
@@ -12,59 +12,45 @@ type Props = {
 };
 
 /**
- * Continuous fire-orange bar with subtle scale markers.
- *
- * Originally rendered `max` discrete ticks, but bumping the scale to 1..12
- * makes that visually noisy at small sizes. The continuous bar keeps the same
- * footprint at every `max`, so existing card layouts don't change.
+ * Discrete fire-orange strength scale. `max` is intentionally explicit at
+ * call sites where tobacco and mix scales differ.
  */
 export function StrengthMeter({
   value,
-  max = MAX_STRENGTH,
-  tickWidth = 14,
+  max = MIX_MAX_STRENGTH,
+  tickWidth = 12,
   tickHeight = 4,
   gap = 4,
   className,
 }: Props) {
   const totalWidth = tickWidth * max + gap * Math.max(0, max - 1);
-  const pct = Math.max(0, Math.min(1, value / max));
-  // 3 internal divider marks at 25/50/75% so the eye still has a sense of
-  // scale without rendering every integer tick at high `max`.
-  const markPositions = [25, 50, 75];
+  const activeTicks = Math.max(0, Math.min(max, Math.round(value)));
+  const ticks = Array.from({ length: max }, (_, index) => index);
 
   return (
     <div
       className={className}
       style={{
-        position: "relative",
+        display: "flex",
+        gap,
         width: totalWidth,
         height: tickHeight,
-        borderRadius: tickHeight / 2,
-        background: "rgba(255,255,255,0.12)",
-        overflow: "hidden",
       }}
       aria-label={`Міцність ${value} з ${max}`}
     >
-      <div
-        style={{
-          width: `${pct * 100}%`,
-          height: "100%",
-          background: "linear-gradient(90deg, #ff4500, #ff8a3d)",
-          boxShadow: "0 0 6px rgba(255,69,0,0.6)",
-        }}
-      />
-      {markPositions.map((p) => (
+      {ticks.map((tick) => (
         <div
-          key={p}
+          key={tick}
           aria-hidden
           style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            left: `${p}%`,
-            width: 1,
-            background: "rgba(0,0,0,0.35)",
-            pointerEvents: "none",
+            width: tickWidth,
+            height: tickHeight,
+            borderRadius: tickHeight / 2,
+            background:
+              tick < activeTicks
+                ? "linear-gradient(90deg, #ff4500, #ff8a3d)"
+                : "rgba(255,255,255,0.12)",
+            boxShadow: tick < activeTicks ? "0 0 6px rgba(255,69,0,0.45)" : undefined,
           }}
         />
       ))}

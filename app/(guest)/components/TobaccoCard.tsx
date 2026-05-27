@@ -1,6 +1,7 @@
 "use client";
 
 import type { FreshTobacco } from "../_mock-data";
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 import { CheckIcon, PlusIcon } from "./Icon";
 import { StrengthMeter } from "./StrengthMeter";
 
@@ -121,7 +122,13 @@ export function TobaccoCard({ item, added = false, onAdd }: Props) {
         <div className="mb-2 overflow-hidden text-[13px] font-semibold leading-[1.2] text-ellipsis whitespace-nowrap text-white">
           {item.flavor}
         </div>
-        <StrengthMeter value={item.strength} tickWidth={10} tickHeight={3} />
+        <StrengthMeter
+          value={item.strength}
+          max={TOBACCO_MAX_STRENGTH}
+          tickWidth={8}
+          tickHeight={3}
+          gap={3}
+        />
       </div>
     </div>
   );

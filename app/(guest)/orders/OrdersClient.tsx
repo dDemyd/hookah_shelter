@@ -25,6 +25,7 @@ import {
   TOBACCO_CATALOG,
   type CatalogTobacco,
 } from "../catalog/_catalog-data";
+import { GuestFooter } from "../components/GuestFooter";
 import { ServiceSheet } from "../components/ServiceSheet";
 import {
   fetchOrdersByShortCodes,
@@ -234,9 +235,7 @@ export function OrdersClient() {
         </div>
       )}
 
-      <div className="px-[22px] pt-6 pb-5 text-center text-[11px] tracking-[1.5px] uppercase text-[#444]">
-        Сховище · Біла Церква
-      </div>
+      <GuestFooter />
 
       <ServiceSheet
         open={orderingDraft !== null}

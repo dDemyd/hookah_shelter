@@ -6,6 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
 import { StrengthMeter } from "../../components/StrengthMeter";
 import type { CatalogTobacco } from "../_catalog-data";
 import { CAT_LABEL } from "../_catalog-data";
@@ -180,7 +181,13 @@ function DetailStat(props: StatProps) {
       ) : (
         <div className="flex items-center gap-1.5">
           <span className="text-[13px]">{props.icon}</span>
-          <StrengthMeter value={props.value} tickWidth={9} tickHeight={3} />
+          <StrengthMeter
+            value={props.value}
+            max={TOBACCO_MAX_STRENGTH}
+            tickWidth={7}
+            tickHeight={3}
+            gap={3}
+          />
         </div>
       )}
     </div>

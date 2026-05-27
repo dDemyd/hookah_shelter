@@ -9,7 +9,7 @@ type Props = {
 
 export function SectionHeader({ kicker, title, action = "Усі", actionHref }: Props) {
   return (
-    <div className="flex items-end justify-between px-[22px] pt-6 pb-3.5">
+    <div className="flex items-end justify-between px-[22px] pb-3.5 mt-8">
       <div>
         {kicker && (
           <div className="mb-1 text-[10px] font-bold uppercase tracking-[2.4px] text-[#ff4500]">

@@ -15,8 +15,10 @@ export type PresetMix = {
   strength: number;
   price: number;
   accent: string;
+  imageUrl: string | null;
   glyph: string;
   isSignature: boolean;
+  isMixOfDay: boolean;
   isNew: boolean;
   ingredients: PresetIngredient[];
 };
@@ -27,6 +29,7 @@ type PresetRow = {
   description: string | null;
   image_url: string | null;
   is_signature: boolean;
+  is_mix_of_day?: boolean;
   is_new: boolean;
   sort_order: number;
   preset_mix_ingredients:
@@ -47,8 +50,10 @@ function fallbackPresetById(id: string): PresetMix | null {
     strength: fallback.strength,
     price: fallback.price,
     accent: fallback.accent,
+    imageUrl: null,
     glyph: fallback.glyph,
     isSignature: true,
+    isMixOfDay: false,
     isNew: false,
     ingredients: [],
   };
@@ -96,22 +101,37 @@ function mapPresetRow(row: PresetRow, index: number): PresetMix {
     strength: Math.round(strength),
     price: DEFAULT_PRICE_UAH,
     accent: accentForIndex(index),
+    imageUrl: row.image_url,
     glyph: glyphForIndex(index),
     isSignature: row.is_signature,
+    isMixOfDay: row.is_mix_of_day ?? false,
     isNew: row.is_new,
     ingredients,
   };
 }
 
+const PRESET_SELECT_WITH_MIX_OF_DAY =
+  "id,name,description,image_url,is_signature,is_mix_of_day,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))";
+
+const PRESET_SELECT_LEGACY =
+  "id,name,description,image_url,is_signature,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))";
+
 export async function fetchPresetMixes(): Promise<PresetMix[]> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const result = await supabase
     .from("preset_mixes")
-    .select(
-      "id,name,description,image_url,is_signature,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))",
-    )
+    .select(PRESET_SELECT_WITH_MIX_OF_DAY)
     .eq("is_active", true)
+    .order("is_mix_of_day", { ascending: false })
     .order("sort_order", { ascending: true });
+
+  const { data, error } = result.error
+    ? await supabase
+        .from("preset_mixes")
+        .select(PRESET_SELECT_LEGACY)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+    : result;
 
   if (error) throw error;
   const mapped = (data as unknown as PresetRow[]).map(mapPresetRow);
@@ -120,14 +140,21 @@ export async function fetchPresetMixes(): Promise<PresetMix[]> {
 
 export async function fetchPresetMix(id: string): Promise<PresetMix | null> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const result = await supabase
     .from("preset_mixes")
-    .select(
-      "id,name,description,image_url,is_signature,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))",
-    )
+    .select(PRESET_SELECT_WITH_MIX_OF_DAY)
     .eq("is_active", true)
     .eq("id", id)
     .maybeSingle();
+
+  const { data, error } = result.error
+    ? await supabase
+        .from("preset_mixes")
+        .select(PRESET_SELECT_LEGACY)
+        .eq("is_active", true)
+        .eq("id", id)
+        .maybeSingle()
+    : result;
 
   if (error) throw error;
   if (!data) return fallbackPresetById(id);
