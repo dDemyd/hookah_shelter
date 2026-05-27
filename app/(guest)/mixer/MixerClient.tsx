@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ import {
 	TOBACCO_CATALOG,
 	type CatalogTobacco,
 } from "../catalog/_catalog-data";
+import { TobaccoPhoto } from "../catalog/components/TobaccoPhoto";
 import { SmokeLayer } from "../components/SmokeLayer";
 import { ChevronIcon, PlusIcon } from "../components/Icon";
 import { ServiceSheet } from "../components/ServiceSheet";
@@ -30,10 +31,12 @@ type Pick = CatalogTobacco & { pct: number };
 
 function HookahVisualizer({
 	picks,
-	onOpenPicker,
+	onTap,
+	disabled = false,
 }: {
 	picks: Pick[];
-	onOpenPicker: () => void;
+	onTap?: () => void;
+	disabled?: boolean;
 }) {
 	const active = picks.length > 0;
 	const total = picks.reduce((sum, pick) => sum + pick.pct, 0);
@@ -52,9 +55,10 @@ function HookahVisualizer({
 	return (
 		<button
 			type="button"
-			onClick={onOpenPicker}
-			className="tap relative flex h-[360px] w-full items-end justify-center overflow-visible rounded-[24px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff4500]"
+			onClick={onTap}
+			disabled={disabled}
 			aria-label="Відкрити список тютюнів"
+			className="tap relative flex h-[360px] w-full items-end justify-center overflow-visible rounded-[18px] disabled:transform-none"
 		>
 			<div className="pointer-events-none absolute bottom-[-6px] left-1/2 h-[70px] w-[280px] -translate-x-1/2">
 				<svg width="100%" height="100%" viewBox="0 0 280 70">
@@ -330,7 +334,8 @@ function SlotCard({
 						step={5}
 						value={pick.pct}
 						onChange={(event) => onPct(Number(event.target.value))}
-						className="h-8 min-w-0 flex-1 accent-[#ff4500]"
+						className="h-8 min-w-0 flex-1"
+						style={{ accentColor: pick.color }}
 					/>
 					<div
 						className="w-11 text-right text-[15px] font-bold tabular-nums"
@@ -543,6 +548,16 @@ function PickerSheet({
 }) {
 	const [query, setQuery] = useState("");
 	const [cat, setCat] = useState("all");
+	const [dragOffset, setDragOffset] = useState(0);
+	const [isDragging, setIsDragging] = useState(false);
+	const dragState = useRef<{
+		pointerId: number;
+		startY: number;
+		lastY: number;
+		lastTime: number;
+		velocity: number;
+		offset: number;
+	} | null>(null);
 	const filtered = catalog.filter((item) => {
 		if (cat !== "all" && item.cat !== cat) return false;
 		if (query.trim()) {
@@ -551,16 +566,58 @@ function PickerSheet({
 		}
 		return true;
 	});
+	const closePicker = () => {
+		setDragOffset(0);
+		setIsDragging(false);
+		dragState.current = null;
+		onClose();
+	};
+	const startDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+		if (!open || event.button !== 0) return;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		const now = performance.now();
+		dragState.current = {
+			pointerId: event.pointerId,
+			startY: event.clientY,
+			lastY: event.clientY,
+			lastTime: now,
+			velocity: 0,
+			offset: 0,
+		};
+		setIsDragging(true);
+		setDragOffset(0);
+	};
+	const moveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+		const drag = dragState.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		const now = performance.now();
+		const delta = Math.max(0, event.clientY - drag.startY);
+		const elapsed = Math.max(1, now - drag.lastTime);
+		drag.velocity = (event.clientY - drag.lastY) / elapsed;
+		drag.offset = Math.min(delta, 180);
+		drag.lastY = event.clientY;
+		drag.lastTime = now;
+		setDragOffset(drag.offset);
+	};
+	const finishDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+		const drag = dragState.current;
+		if (!drag || drag.pointerId !== event.pointerId) return;
+		const shouldClose = drag.offset > 76 || drag.velocity > 0.45;
+		dragState.current = null;
+		setIsDragging(false);
+		setDragOffset(0);
+		if (shouldClose) onClose();
+	};
 
 	return (
 		<>
 			<button
 				type="button"
 				aria-label="Закрити вибір тютюну"
-				onClick={onClose}
+				onClick={closePicker}
 				className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity"
 				style={{
-					opacity: open ? 1 : 0,
+					opacity: open ? Math.max(0.25, 1 - dragOffset / 260) : 0,
 					pointerEvents: open ? "auto" : "none",
 					visibility: open ? "visible" : "hidden",
 					transition: open
@@ -569,24 +626,28 @@ function PickerSheet({
 				}}
 			/>
 			<div
-				aria-hidden={!open}
-				inert={open ? undefined : true}
-				className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[85dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)]"
+				className="fixed inset-x-0 bottom-0 z-50 mx-auto flex h-[85dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
 				style={{
-					transform: open ? "translateY(0)" : "translateY(100%)",
-					visibility: open ? "visible" : "hidden",
-					transition: open
-						? "transform 300ms ease-out"
-						: "transform 240ms ease-in, visibility 0s linear 240ms",
-					willChange: "transform",
+					transform: open
+						? `translateY(${dragOffset}px)`
+						: "translateY(100%)",
+					transitionDuration: isDragging ? "0ms" : undefined,
 				}}
 			>
-				<div className="flex justify-center py-2.5">
-					<div className="h-1 w-10 rounded-full bg-white/20" />
-				</div>
+				<button
+					type="button"
+					aria-label="Потягни вниз, щоб закрити вибір тютюну"
+					onPointerDown={startDrag}
+					onPointerMove={moveDrag}
+					onPointerUp={finishDrag}
+					onPointerCancel={finishDrag}
+					className="flex min-h-11 touch-none cursor-grab items-center justify-center rounded-t-[24px] py-2.5 active:cursor-grabbing"
+				>
+					<span className="h-1 w-10 rounded-full bg-white/20" />
+				</button>
 				<div className="flex items-center justify-between px-[22px] pb-3">
 					<h3 className="text-[18px] font-bold text-white">Обери тютюн</h3>
-					<button type="button" onClick={onClose} className="tap text-[14px] font-semibold text-[#888]">
+					<button type="button" onClick={closePicker} className="tap text-[14px] font-semibold text-[#888]">
 						Закрити
 					</button>
 				</div>
@@ -630,12 +691,9 @@ function PickerSheet({
 										borderColor: picked ? `${item.color}66` : "rgba(255,255,255,0.05)",
 									}}
 								>
-									<div
-										className="h-16"
-										style={{
-											background: `radial-gradient(circle at 30% 40%, ${item.color}99, ${item.color}33 60%, #0a0606 100%)`,
-										}}
-									/>
+									<div className="h-24 overflow-hidden [&>div]:h-full [&>div]:aspect-auto">
+										<TobaccoPhoto item={item} dim={picked} />
+									</div>
 									<div className="p-2.5">
 										<div className="mb-0.5 text-[9px] font-semibold tracking-[0.8px] text-[#888] uppercase">
 											{item.brand}
@@ -776,7 +834,11 @@ export function MixerClient() {
 
 			<div className="no-scrollbar absolute inset-0 overflow-y-auto overflow-x-hidden pt-[100px] pb-28">
 				<div className="px-[22px] pt-1 pb-2">
-					<HookahVisualizer picks={picks} onOpenPicker={() => setPickerOpen(true)} />
+					<HookahVisualizer
+						picks={picks}
+						disabled={picks.length >= maxIngredients}
+						onTap={() => setPickerOpen(true)}
+					/>
 				</div>
 
 				<div className="mx-[22px] mt-2 rounded-[14px] border border-white/[0.05] bg-[#141010]/70 px-3.5 py-3 backdrop-blur">
