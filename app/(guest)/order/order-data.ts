@@ -16,6 +16,7 @@ export type OrderIngredientView = {
 export type OrderView = {
   id: string;
   shortCode: string;
+  guestId: string | null;
   tableId: number | null;
   guestName: string | null;
   notes: string | null;
@@ -33,6 +34,7 @@ export type OrderView = {
 type OrderRow = {
   id: string;
   short_code: string;
+  guest_id: string | null;
   table_id: number | null;
   guest_name: string | null;
   notes: string | null;
@@ -58,12 +60,13 @@ type OrderRow = {
 };
 
 const SELECT_COLS =
-  "id,short_code,table_id,guest_name,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,status_changed_at,created_at,order_ingredients(id,tobacco_id,percentage,tobacco_snapshot)";
+  "id,short_code,guest_id,table_id,guest_name,notes,status,service_type,price,is_overpack,cool_intensity,deposit_amount,status_changed_at,created_at,order_ingredients(id,tobacco_id,percentage,tobacco_snapshot)";
 
 function mapRow(row: OrderRow): OrderView {
   return {
     id: row.id,
     shortCode: row.short_code,
+    guestId: row.guest_id,
     tableId: row.table_id,
     guestName: row.guest_name,
     notes: row.notes,
@@ -117,4 +120,38 @@ export async function fetchOrdersByShortCodes(
 
   if (error) throw error;
   return (data as unknown as OrderRow[]).map(mapRow);
+}
+
+export type OrderReview = {
+  rating: number;
+  comment: string | null;
+};
+
+export async function fetchOrderReview(
+  orderId: string,
+): Promise<OrderReview | null> {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("order_reviews")
+    .select("rating,comment")
+    .eq("order_id", orderId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+export async function submitOrderReview(
+  orderId: string,
+  guestId: string,
+  rating: number,
+  comment: string,
+): Promise<OrderReview> {
+  const res = await fetch(`/api/orders/${orderId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guestId, rating, comment }),
+  });
+  if (!res.ok) throw new Error("Не вдалося надіслати відгук");
+  return res.json();
 }

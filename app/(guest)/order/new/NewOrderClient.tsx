@@ -14,6 +14,7 @@ import { usePublicSettings } from "@/lib/hooks/use-max-ingredients";
 import { useMixStore } from "@/lib/stores/mix-store";
 import { useOrdersHistoryStore } from "@/lib/stores/orders-history-store";
 import { getGuestId } from "@/lib/utils/guest-id";
+import { normalizeUkrainianPhone } from "@/lib/utils/phone";
 import {
   fetchCatalogTobaccos,
   TOBACCO_CATALOG,
@@ -58,6 +59,7 @@ export function NewOrderClient() {
     (overpackEnabled ? settings.overpackPrice : 0);
   const [guestName, setGuestName] = useState("");
   const [guestContact, setGuestContact] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   // When seated at a table, the kalyanchik can find the guest in person — so we
@@ -99,6 +101,13 @@ export function NewOrderClient() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
+
+    const phone = showContactField ? normalizeUkrainianPhone(guestContact) : null;
+    if (showContactField && !phone) {
+      setPhoneError("Вкажіть український номер у форматі +380XXXXXXXXX.");
+      return;
+    }
+    setPhoneError(null);
     setSubmitState("submitting");
 
     const response = await fetch("/api/orders", {
@@ -107,8 +116,8 @@ export function NewOrderClient() {
       body: JSON.stringify({
         tableId,
         guestId: getGuestId() ?? undefined,
-        guestName,
-        guestContact: showContactField ? guestContact : "",
+        guestName: guestName.trim(),
+        guestContact: phone ?? "",
         notes,
         serviceType,
         isOverpack: overpackEnabled,
@@ -254,7 +263,7 @@ export function NewOrderClient() {
               className="size-4 accent-[#ff4500]"
             />
             <span className="text-[13px] text-[#aaa]">
-              Додати контакт{" "}
+              Додати телефон{" "}
               <span className="text-[11px] text-[#666]">
                 · на всяк випадок
               </span>
@@ -264,7 +273,7 @@ export function NewOrderClient() {
         {showContactField ? (
           <label className="grid gap-1.5">
             <span className="text-[12px] font-bold tracking-[1px] text-[#888] uppercase">
-              Контакт
+              Телефон
               {tableId === null ? (
                 <span className="ml-2 text-[10px] text-[#ff8a3d]">
                   · обов&apos;язково для замовлень на винос
@@ -273,10 +282,24 @@ export function NewOrderClient() {
             </span>
             <input
               value={guestContact}
-              onChange={(event) => setGuestContact(event.target.value)}
-              placeholder="Телефон або Telegram"
-              className="h-12 rounded-[12px] border border-white/[0.08] bg-white/[0.04] px-4 text-[15px] text-white outline-none placeholder:text-[#555] focus:border-[#ff4500]"
+              onChange={(event) => {
+                setGuestContact(event.target.value);
+                if (phoneError) setPhoneError(null);
+              }}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+380XXXXXXXXX"
+              aria-invalid={Boolean(phoneError)}
+              className="h-12 rounded-[12px] border border-white/[0.08] bg-white/[0.04] px-4 text-[15px] text-white outline-none placeholder:text-[#555] focus:border-[#ff4500] aria-invalid:border-[#d97070]"
             />
+            {phoneError ? (
+              <span className="text-[12px] text-[#d97070]">{phoneError}</span>
+            ) : (
+              <span className="text-[11px] text-[#666]">
+                Приймаємо українські номери: +380, 380 або 0XXXXXXXXX.
+              </span>
+            )}
           </label>
         ) : null}
         <label className="grid gap-1.5">

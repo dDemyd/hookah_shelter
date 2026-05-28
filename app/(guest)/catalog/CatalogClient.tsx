@@ -6,13 +6,16 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useMixStore } from "@/lib/stores/mix-store";
 import { useMaxIngredientsPerMix } from "@/lib/hooks/use-max-ingredients";
+import { getGuestId } from "@/lib/utils/guest-id";
 import {
   CAT_LABEL,
   CATALOG_CATEGORIES,
   fetchCatalogCategories,
   fetchCatalogTobaccos,
+  fetchLikedTobaccoIds,
   pluralForm,
   SORT_OPTIONS,
+  toggleTobaccoLike,
   type CatalogTobacco,
   type SortBy,
   TOBACCO_CATALOG,
@@ -63,11 +66,54 @@ export function CatalogClient() {
     categoriesQuery.data && categoriesQuery.data.length > 0
       ? categoriesQuery.data
       : CATALOG_CATEGORIES;
+  const categoryIds = useMemo(
+    () => new Set(categories.map((category) => category.id)),
+    [categories],
+  );
+  const activeCat = categoryIds.has(cat) ? cat : "all";
 
   const slots = useMixStore((s) => s.slots);
   const addTobacco = useMixStore((s) => s.addTobacco);
   const maxIngredients = useMaxIngredientsPerMix();
   const isPicked = (id: string) => slots.some((s) => s.tobaccoId === id);
+
+  const [guestId] = useState<string | null>(() => getGuestId());
+
+  const likedQuery = useQuery({
+    queryKey: ["tobacco-likes", guestId],
+    queryFn: () => fetchLikedTobaccoIds(guestId),
+    enabled: Boolean(guestId),
+  });
+
+  // Optimistic per-tobacco override on top of the server-derived state.
+  const [likeOverride, setLikeOverride] = useState<
+    Record<string, { liked: boolean; count: number }>
+  >({});
+
+  const likeInfo = (item: CatalogTobacco) =>
+    likeOverride[item.id] ?? {
+      liked: likedQuery.data?.has(item.id) ?? false,
+      count: item.likesCount,
+    };
+
+  const toggleLike = async (item: CatalogTobacco) => {
+    if (!guestId) return;
+    const current = likeInfo(item);
+    setLikeOverride((m) => ({
+      ...m,
+      [item.id]: {
+        liked: !current.liked,
+        count: current.count + (current.liked ? -1 : 1),
+      },
+    }));
+    try {
+      const res = await toggleTobaccoLike(item.id, guestId);
+      setLikeOverride((m) => ({ ...m, [item.id]: res }));
+    } catch {
+      setLikeOverride((m) => ({ ...m, [item.id]: current }));
+      toast("Не вдалося оновити вподобайку");
+    }
+  };
 
   const brands = useMemo(
     () => ["Усі", ...Array.from(new Set(catalog.map((t) => t.brand))).sort()],
@@ -84,7 +130,7 @@ export function CatalogClient() {
     const q = query.toLowerCase().trim();
     const list = catalog.filter((t) => {
       if (newOnly && !t.isNew) return false;
-      if (cat !== "all" && t.cat !== cat) return false;
+      if (activeCat !== "all" && t.cat !== activeCat) return false;
       if (brand !== "Усі" && t.brand !== brand) return false;
       if (t.strength < strRange[0] || t.strength > strRange[1]) return false;
       if (q) {
@@ -108,7 +154,7 @@ export function CatalogClient() {
       const bScore = (b.inStock ? 1 : 0) * 100 + b.popularity;
       return bScore - aScore;
     });
-  }, [cat, newOnly, brand, strRange, sortBy, query, catalog, catLabel]);
+  }, [activeCat, newOnly, brand, strRange, sortBy, query, catalog, catLabel]);
 
   const addToMix = (item: CatalogTobacco) => {
     if (!item.inStock) return;
@@ -125,7 +171,7 @@ export function CatalogClient() {
   };
 
   const hasActiveFilters =
-    cat !== "all" ||
+    activeCat !== "all" ||
     brand !== "Усі" ||
     strRange[0] !== 1 ||
     strRange[1] !== TOBACCO_MAX_STRENGTH ||
@@ -150,7 +196,7 @@ export function CatalogClient() {
           <span className="mr-1">✦</span> Нові
         </Chip>
         {categories.map((c) => (
-          <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)}>
+          <Chip key={c.id} active={activeCat === c.id} onClick={() => setCat(c.id)}>
             {c.label}
           </Chip>
         ))}
@@ -233,15 +279,21 @@ export function CatalogClient() {
         />
       ) : (
         <div className="grid grid-cols-2 gap-2.5 px-4">
-          {filtered.map((t) => (
-            <CatalogCard
-              key={t.id}
-              item={t}
-              picked={isPicked(t.id)}
-              onAdd={addToMix}
-              onOpenDetail={setDetail}
-            />
-          ))}
+          {filtered.map((t) => {
+            const like = likeInfo(t);
+            return (
+              <CatalogCard
+                key={t.id}
+                item={t}
+                picked={isPicked(t.id)}
+                liked={like.liked}
+                likeCount={like.count}
+                onAdd={addToMix}
+                onLike={toggleLike}
+                onOpenDetail={setDetail}
+              />
+            );
+          })}
         </div>
       )}
 

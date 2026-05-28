@@ -1,9 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { getGuestId } from "@/lib/utils/guest-id";
 import { StrengthMeter } from "../../components/StrengthMeter";
-import { fetchPresetMix } from "../preset-data";
+import {
+  StarRatingDisplay,
+  StarRatingInput,
+} from "../../components/StarRating";
+import { fetchMyMixRatings, fetchPresetMix, rateMix } from "../preset-data";
 
 export function PresetDetailClient({ id }: { id: string }) {
   const presetQuery = useQuery({
@@ -11,6 +18,38 @@ export function PresetDetailClient({ id }: { id: string }) {
     queryFn: () => fetchPresetMix(id),
   });
   const preset = presetQuery.data;
+
+  const [guestId] = useState<string | null>(() => getGuestId());
+  const myRatingsQuery = useQuery({
+    queryKey: ["mix-ratings", guestId],
+    queryFn: () => fetchMyMixRatings(guestId),
+    enabled: Boolean(guestId),
+  });
+
+  // Optimistic override of the guest's own stars + the shown aggregate.
+  const [override, setOverride] = useState<{
+    stars: number;
+    avg: number;
+    count: number;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const myStars = override?.stars ?? myRatingsQuery.data?.get(id) ?? 0;
+  const avg = override?.avg ?? preset?.ratingAvg ?? 0;
+  const count = override?.count ?? preset?.ratingCount ?? 0;
+
+  const rate = async (stars: number) => {
+    if (!guestId || saving) return;
+    setSaving(true);
+    try {
+      const res = await rateMix(id, guestId, stars);
+      setOverride(res);
+    } catch {
+      toast("Не вдалося зберегти оцінку");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (presetQuery.isLoading) {
     return (
@@ -106,6 +145,29 @@ export function PresetDetailClient({ id }: { id: string }) {
             Склад буде підтягнуто з Supabase після заповнення preset ingredients.
           </div>
         )}
+      </section>
+
+      <section className="mt-6 rounded-[14px] border border-white/[0.06] bg-white/[0.03] px-4 py-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[17px] font-bold text-white">Оцінка</h2>
+          {count > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <StarRatingDisplay value={avg} size={14} />
+              <span className="text-[13px] font-bold text-white tabular-nums">
+                {avg.toFixed(1)}
+              </span>
+              <span className="text-[12px] text-[#888]">({count})</span>
+            </div>
+          ) : (
+            <span className="text-[12px] text-[#888]">Ще немає оцінок</span>
+          )}
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <StarRatingInput value={myStars} onPick={rate} disabled={saving} />
+          <span className="text-[11px] text-[#888]">
+            {myStars > 0 ? "Твоя оцінка" : "Постав свою"}
+          </span>
+        </div>
       </section>
 
       <div className="fixed inset-x-0 bottom-20 z-30 mx-auto max-w-md px-[22px]">

@@ -18,13 +18,19 @@ import {
 import { fetchPresetMixes } from "./presets/preset-data";
 
 const CATEGORY_HUES: Record<string, string> = {
-  citrus: "#f5a623",
-  berries: "#d0021b",
-  mint: "#7ed321",
-  dessert: "#bd6932",
+  berries: "#c5183a",
+  citrus: "#ff8a3d",
+  tropical: "#f0a523",
+  orchard: "#a8b53a",
+  dessert: "#c98b3c",
+  candy: "#ff4d8d",
+  drinks: "#7a2bb8",
+  "mint-cool": "#1ec27a",
+  herbal: "#5d8f4a",
   spicy: "#ff4500",
-  tobacco: "#a06a3a",
-  tropical: "#f5a623",
+  savory: "#bd6932",
+  tobacco: "#8a5a2a",
+  other: "#8a8f98",
 };
 
 export function HomeClient() {

@@ -21,6 +21,8 @@ export type PresetMix = {
   isMixOfDay: boolean;
   isNew: boolean;
   ingredients: PresetIngredient[];
+  ratingAvg: number;
+  ratingCount: number;
 };
 
 type PresetRow = {
@@ -32,6 +34,8 @@ type PresetRow = {
   is_mix_of_day?: boolean;
   is_new: boolean;
   sort_order: number;
+  rating_avg?: number | null;
+  rating_count?: number | null;
   preset_mix_ingredients:
     | {
         percentage: number;
@@ -56,6 +60,8 @@ function fallbackPresetById(id: string): PresetMix | null {
     isMixOfDay: false,
     isNew: false,
     ingredients: [],
+    ratingAvg: 0,
+    ratingCount: 0,
   };
 }
 
@@ -112,11 +118,13 @@ function mapPresetRow(row: PresetRow, index: number): PresetMix {
     isMixOfDay: row.is_mix_of_day ?? false,
     isNew: row.is_new,
     ingredients,
+    ratingAvg: row.rating_avg ?? 0,
+    ratingCount: row.rating_count ?? 0,
   };
 }
 
 const PRESET_SELECT_WITH_MIX_OF_DAY =
-  "id,name,description,image_url,is_signature,is_mix_of_day,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name,is_active),flavor_categories(name,slug,emoji)))";
+  "id,name,description,image_url,is_signature,is_mix_of_day,is_new,sort_order,rating_avg,rating_count,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name,is_active),flavor_categories(name,slug,emoji)))";
 
 const PRESET_SELECT_LEGACY =
   "id,name,description,image_url,is_signature,is_new,sort_order,preset_mix_ingredients(percentage,tobaccos(id,name,description,strength,smoke,color,image_url,in_stock,popularity,created_at,tobacco_brands(name),flavor_categories(name,slug,emoji)))";
@@ -164,4 +172,32 @@ export async function fetchPresetMix(id: string): Promise<PresetMix | null> {
   if (error) throw error;
   if (!data) return fallbackPresetById(id);
   return mapPresetRow(data as unknown as PresetRow, 0);
+}
+
+// The guest's own star rating per preset mix (for hydrating the stars widget).
+export async function fetchMyMixRatings(
+  guestId: string | null,
+): Promise<Map<string, number>> {
+  if (!guestId) return new Map();
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("mix_ratings")
+    .select("preset_mix_id,stars")
+    .eq("guest_id", guestId);
+  if (error) throw error;
+  return new Map(data.map((row) => [row.preset_mix_id, row.stars]));
+}
+
+export async function rateMix(
+  presetMixId: string,
+  guestId: string,
+  stars: number,
+): Promise<{ stars: number; avg: number; count: number }> {
+  const res = await fetch(`/api/presets/${presetMixId}/rate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ guestId, stars }),
+  });
+  if (!res.ok) throw new Error("Не вдалося зберегти оцінку");
+  return res.json();
 }

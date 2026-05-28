@@ -1,7 +1,7 @@
 "use client";
 
 import { TOBACCO_MAX_STRENGTH } from "@/lib/constants";
-import { CheckIcon, PlusIcon } from "../../components/Icon";
+import { CheckIcon, HeartIcon, PlusIcon } from "../../components/Icon";
 import { StrengthMeter } from "../../components/StrengthMeter";
 import type { CatalogTobacco } from "../_catalog-data";
 import { CAT_LABEL } from "../_catalog-data";
@@ -10,11 +10,22 @@ import { TobaccoPhoto } from "./TobaccoPhoto";
 type Props = {
   item: CatalogTobacco;
   picked: boolean;
+  liked: boolean;
+  likeCount: number;
   onAdd: (item: CatalogTobacco) => void;
+  onLike: (item: CatalogTobacco) => void;
   onOpenDetail: (item: CatalogTobacco) => void;
 };
 
-export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
+export function CatalogCard({
+  item,
+  picked,
+  liked,
+  likeCount,
+  onAdd,
+  onLike,
+  onOpenDetail,
+}: Props) {
   const out = !item.inStock;
 
   return (
@@ -29,7 +40,9 @@ export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
         opacity: out ? 0.7 : 1,
       }}
     >
-      {/* Photo (also opens detail) */}
+      {/* Photo (also opens detail) + like overlay live in the same relative wrapper
+          so the like chip can be a sibling of the photo button (avoiding nested buttons). */}
+      <div className="relative">
       <button
         type="button"
         onClick={() => !out && onOpenDetail(item)}
@@ -73,7 +86,7 @@ export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
         )}
         {item.isNew && !out && item.popularity >= 5 && (
           <div
-            className="absolute top-2 right-2 rounded px-2 py-1 text-[9px] font-bold tracking-[1.2px] text-[#ff8a3d] uppercase backdrop-blur"
+            className="absolute top-10 left-2 rounded px-2 py-1 text-[9px] font-bold tracking-[1.2px] text-[#ff8a3d] uppercase backdrop-blur"
             style={{
               background: "rgba(20,12,12,0.92)",
               border: "1px solid rgba(255,69,0,0.5)",
@@ -83,6 +96,29 @@ export function CatalogCard({ item, picked, onAdd, onOpenDetail }: Props) {
           </div>
         )}
       </button>
+
+      {/* Like chip — bottom-right overlay on the photo. Sibling of the photo button
+          (not nested) to keep HTML valid and screen-reader semantics clean. */}
+      <button
+        type="button"
+        onClick={() => onLike(item)}
+        aria-label={liked ? "Прибрати вподобайку" : "Вподобати"}
+        aria-pressed={liked}
+        className="tap absolute right-2 bottom-2 flex h-10 min-w-10 items-center justify-center gap-1 rounded-full px-2.5 backdrop-blur"
+        style={{
+          background: liked ? "rgba(255,69,0,0.18)" : "rgba(20,12,12,0.7)",
+          border: `1px solid ${liked ? "rgba(255,106,43,0.6)" : "rgba(255,255,255,0.14)"}`,
+          color: liked ? "#ff6a2b" : "rgba(255,255,255,0.9)",
+        }}
+      >
+        <HeartIcon size={15} filled={liked} />
+        {likeCount > 0 && (
+          <span className="text-[11px] font-semibold tabular-nums">
+            {likeCount}
+          </span>
+        )}
+      </button>
+      </div>
 
       {/* Footer */}
       <div className="relative px-3 pt-2.5 pb-3.5">

@@ -76,13 +76,19 @@ export type CategoryCard = {
 };
 
 export const CATEGORIES: CategoryCard[] = [
-  { id: "citrus", emoji: "🍋", label: "Цитрусові", count: 3, hue: "#f5a623" },
-  { id: "berries", emoji: "🍓", label: "Ягідні", count: 5, hue: "#d0021b" },
-  { id: "mint", emoji: "🌿", label: "М'ятні", count: 3, hue: "#7ed321" },
-  { id: "dessert", emoji: "🍰", label: "Десертні", count: 3, hue: "#bd6932" },
-  { id: "spicy", emoji: "🌶️", label: "Пряні", count: 1, hue: "#ff4500" },
-  { id: "tobacco", emoji: "🚬", label: "Тютюнові", count: 1, hue: "#a06a3a" },
-  { id: "tropical", emoji: "🥭", label: "Тропіки", count: 4, hue: "#f5a623" },
+  { id: "berries", emoji: "🍓", label: "Ягоди", count: 32, hue: "#c5183a" },
+  { id: "citrus", emoji: "🍋", label: "Цитрус", count: 25, hue: "#ff8a3d" },
+  { id: "tropical", emoji: "🥭", label: "Тропіки", count: 24, hue: "#f0a523" },
+  { id: "orchard", emoji: "🍏", label: "Садові фрукти", count: 20, hue: "#a8b53a" },
+  { id: "dessert", emoji: "🍰", label: "Десерт", count: 18, hue: "#c98b3c" },
+  { id: "candy", emoji: "🍬", label: "Цукерки", count: 14, hue: "#ff4d8d" },
+  { id: "drinks", emoji: "🥤", label: "Напої", count: 12, hue: "#7a2bb8" },
+  { id: "mint-cool", emoji: "❄️", label: "Холодок", count: 10, hue: "#1ec27a" },
+  { id: "herbal", emoji: "🌿", label: "Трави та чай", count: 8, hue: "#5d8f4a" },
+  { id: "spicy", emoji: "🌶️", label: "Пряне", count: 7, hue: "#ff4500" },
+  { id: "savory", emoji: "🍕", label: "Гастро", count: 5, hue: "#bd6932" },
+  { id: "tobacco", emoji: "🚬", label: "Тютюнові", count: 4, hue: "#8a5a2a" },
+  { id: "other", emoji: "✨", label: "Інше", count: 1, hue: "#8a8f98" },
 ];
 
 export type FreshTobacco = {

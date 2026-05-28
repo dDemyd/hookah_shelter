@@ -192,6 +192,41 @@ export type Database = {
           },
         ]
       }
+      order_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          guest_id: string
+          order_id: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          guest_id: string
+          order_id: string
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          guest_id?: string
+          order_id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       preset_mix_ingredients: {
         Row: {
           percentage: number
@@ -225,6 +260,38 @@ export type Database = {
           },
         ]
       }
+      mix_ratings: {
+        Row: {
+          created_at: string
+          guest_id: string
+          preset_mix_id: string
+          stars: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          guest_id: string
+          preset_mix_id: string
+          stars: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          guest_id?: string
+          preset_mix_id?: string
+          stars?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mix_ratings_preset_mix_id_fkey"
+            columns: ["preset_mix_id"]
+            isOneToOne: false
+            referencedRelation: "preset_mixes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       preset_mixes: {
         Row: {
           created_at: string
@@ -236,6 +303,8 @@ export type Database = {
           is_new: boolean
           is_signature: boolean
           name: string
+          rating_avg: number
+          rating_count: number
           sort_order: number
           updated_at: string
         }
@@ -249,6 +318,8 @@ export type Database = {
           is_new?: boolean
           is_signature?: boolean
           name: string
+          rating_avg?: number
+          rating_count?: number
           sort_order?: number
           updated_at?: string
         }
@@ -262,6 +333,8 @@ export type Database = {
           is_new?: boolean
           is_signature?: boolean
           name?: string
+          rating_avg?: number
+          rating_count?: number
           sort_order?: number
           updated_at?: string
         }
@@ -275,6 +348,7 @@ export type Database = {
           is_active: boolean
           role: string
           telegram_chat_id: number | null
+          user_telegram_id: number | null
         }
         Insert: {
           created_at?: string
@@ -283,6 +357,7 @@ export type Database = {
           is_active?: boolean
           role: string
           telegram_chat_id?: number | null
+          user_telegram_id?: number | null
         }
         Update: {
           created_at?: string
@@ -291,6 +366,7 @@ export type Database = {
           is_active?: boolean
           role?: string
           telegram_chat_id?: number | null
+          user_telegram_id?: number | null
         }
         Relationships: []
       }
@@ -359,6 +435,7 @@ export type Database = {
           image_url: string | null
           in_stock: boolean
           is_active: boolean
+          likes_count: number
           name: string
           popularity: number
           smoke: number
@@ -375,6 +452,7 @@ export type Database = {
           image_url?: string | null
           in_stock?: boolean
           is_active?: boolean
+          likes_count?: number
           name: string
           popularity?: number
           smoke?: number
@@ -391,6 +469,7 @@ export type Database = {
           image_url?: string | null
           in_stock?: boolean
           is_active?: boolean
+          likes_count?: number
           name?: string
           popularity?: number
           smoke?: number
@@ -410,6 +489,32 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "flavor_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tobacco_likes: {
+        Row: {
+          created_at: string
+          guest_id: string
+          tobacco_id: string
+        }
+        Insert: {
+          created_at?: string
+          guest_id: string
+          tobacco_id: string
+        }
+        Update: {
+          created_at?: string
+          guest_id?: string
+          tobacco_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tobacco_likes_tobacco_id_fkey"
+            columns: ["tobacco_id"]
+            isOneToOne: false
+            referencedRelation: "tobaccos"
             referencedColumns: ["id"]
           },
         ]

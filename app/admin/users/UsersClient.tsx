@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save, Users } from "lucide-react";
+import { Save, Unlink, Users } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ type AdminUser = {
   full_name: string;
   role: "admin" | "kalyanchik" | null;
   is_active: boolean;
+  user_telegram_id: number | null;
   has_profile: boolean;
 };
 
@@ -68,6 +69,25 @@ export function UsersClient() {
     },
   });
 
+  const unlinkTelegram = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, unlinkTelegram: true }),
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Не вдалося відвʼязати Telegram.");
+    },
+    onSuccess: async () => {
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (mutationError) => {
+      setError(mutationError instanceof Error ? mutationError.message : "Не вдалося відвʼязати Telegram.");
+    },
+  });
+
   const updateDraft = (user: AdminUser, patch: Partial<Draft>) => {
     const baseDraft = currentDraft(user);
     setDrafts((current) => ({
@@ -100,18 +120,19 @@ export function UsersClient() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <div className="overflow-x-auto rounded-lg border">
-        <div className="min-w-[820px]">
-          <div className="grid grid-cols-[240px_220px_160px_120px_100px] gap-3 border-b px-4 py-2 text-xs font-medium uppercase text-muted-foreground">
+        <div className="min-w-[980px]">
+          <div className="grid grid-cols-[220px_200px_150px_180px_120px_100px] gap-3 border-b px-4 py-2 text-xs font-medium uppercase text-muted-foreground">
             <span>Користувач</span>
             <span>Імʼя</span>
             <span>Роль</span>
+            <span>Статус привʼязки</span>
             <span>Вхід</span>
             <span className="text-right">Дії</span>
           </div>
           {usersQuery.data?.map((user) => {
             const draft = currentDraft(user);
             return (
-              <div key={user.id} className="grid grid-cols-[240px_220px_160px_120px_100px] items-center gap-3 border-b px-4 py-3 last:border-b-0">
+              <div key={user.id} className="grid grid-cols-[220px_200px_150px_180px_120px_100px] items-center gap-3 border-b px-4 py-3 last:border-b-0">
                 <div>
                   <p className="truncate font-medium">{user.email || user.id}</p>
                   <div className="mt-1 flex gap-1">
@@ -125,6 +146,33 @@ export function UsersClient() {
                   <option value="kalyanchik">Кальянщик</option>
                   <option value="admin">Адмін</option>
                 </select>
+                <div className="space-y-1 text-sm">
+                  {user.user_telegram_id ? (
+                    <>
+                      <Badge variant="secondary">Привʼязано</Badge>
+                      <p className="text-xs text-muted-foreground">
+                        ID {user.user_telegram_id}
+                      </p>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="gap-1"
+                        disabled={unlinkTelegram.isPending}
+                        onClick={() => unlinkTelegram.mutate(user.id)}
+                      >
+                        <Unlink className="size-3" />
+                        Відвʼязати
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Badge variant="outline">Не привʼязано</Badge>
+                      <p className="text-xs text-muted-foreground">
+                        Надішліть email боту
+                      </p>
+                    </>
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground">
                   <p>{formatDate(user.last_sign_in_at)}</p>
                   <label className="mt-1 flex items-center gap-2">

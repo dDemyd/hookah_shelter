@@ -34,7 +34,7 @@ export async function GET() {
 
   const [{ data: usersData, error: usersError }, { data: profiles, error: profilesError }] = await Promise.all([
     auth.service.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-    auth.service.from("staff_profiles").select("id,full_name,role,telegram_chat_id,is_active,created_at"),
+    auth.service.from("staff_profiles").select("id,full_name,role,telegram_chat_id,user_telegram_id,is_active,created_at"),
   ]);
 
   if (usersError) {
@@ -55,6 +55,7 @@ export async function GET() {
       full_name: profile?.full_name ?? user.email ?? "",
       role: profile?.role ?? null,
       is_active: profile?.is_active ?? false,
+      user_telegram_id: profile?.user_telegram_id ?? null,
       has_profile: Boolean(profile),
     };
   });
@@ -71,7 +72,25 @@ export async function PATCH(request: Request) {
     full_name?: string;
     role?: StaffRole;
     is_active?: boolean;
+    unlinkTelegram?: boolean;
   };
+
+  if (body.unlinkTelegram) {
+    if (!body.id) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+
+    const { error } = await auth.service
+      .from("staff_profiles")
+      .update({ user_telegram_id: null })
+      .eq("id", body.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  }
 
   if (!body.id || !body.full_name?.trim() || !body.role) {
     return NextResponse.json({ error: "id, full_name and role are required" }, { status: 400 });

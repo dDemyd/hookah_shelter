@@ -37,6 +37,7 @@ import { OrdersListSkeleton } from "../components/GuestSkeletons";
 type Tab = "all" | "drafts" | "ordered";
 
 const DEFAULT_TOBACCO_COLOR = "#a06a3a";
+const REVIEWABLE_STATUSES: OrderStatus[] = ["delivered", "closed"];
 const STATUS_TONE: Record<
   OrderStatus,
   { color: string; bg: string; border: string }
@@ -226,6 +227,7 @@ export function OrdersClient() {
                 order={order}
                 catalogById={catalogById}
                 onView={() => router.push(`/order/${order.shortCode}`)}
+                onReview={() => router.push(`/order/${order.shortCode}#review`)}
               />
             ))}
           {showDrafts &&
@@ -607,10 +609,12 @@ function OrderCard({
   order,
   catalogById,
   onView,
+  onReview,
 }: {
   order: OrderView;
   catalogById: Map<string, CatalogTobacco>;
   onView: () => void;
+  onReview: () => void;
 }) {
   const picks: OrderPick[] = order.ingredients.map((ingredient) => {
     const t = ingredient.tobaccoId
@@ -625,6 +629,7 @@ function OrderCard({
     };
   });
   const tone = STATUS_TONE[order.status];
+  const canReview = REVIEWABLE_STATUSES.includes(order.status);
 
   return (
     <article
@@ -690,6 +695,19 @@ function OrderCard({
             </div>
           </div>
           <div className="flex-1" />
+          {canReview ? (
+            <button
+              type="button"
+              onClick={onReview}
+              className="tap h-9 rounded-[10px] px-4 text-[13px] font-bold text-white"
+              style={{
+                background: "linear-gradient(180deg, #ff6a1f, #ff4500)",
+                boxShadow: "0 4px 12px rgba(255,69,0,0.35)",
+              }}
+            >
+              Оцінити
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onView}

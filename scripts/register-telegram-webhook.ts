@@ -78,7 +78,7 @@ async function main() {
     body: JSON.stringify({
       url,
       secret_token: secret,
-      allowed_updates: ["callback_query"],
+      allowed_updates: ["message", "callback_query"],
       drop_pending_updates: false,
     }),
   });

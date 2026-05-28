@@ -874,6 +874,13 @@ export function MixerClient() {
 					</div>
 				</div>
 
+				{picks.length >= 2 && (
+					<div className="mx-[22px] mt-5 rounded-[12px] border border-[#ff450026] bg-[#ff45000f] px-3.5 py-3 text-[12px] leading-5 text-[#ffb070]">
+						<span className="font-bold">Підказка кальянщика.</span> Зміна одного
+						відсотка автоматично перерозподіляє інші, щоб сума завжди була 100%.
+					</div>
+				)}
+
 				<div className="mx-[22px] mt-5 flex flex-col gap-2.5">
 					<div className="mb-3 flex items-baseline justify-between">
 						<h3 className="m-0 text-[16px] font-bold tracking-[-0.3px] text-white">
@@ -892,13 +899,6 @@ export function MixerClient() {
 						onIntensityChange={setCoolIntensity}
 					/>
 				</div>
-
-				{picks.length >= 2 && (
-					<div className="mx-[22px] mt-5 rounded-[12px] border border-[#ff450026] bg-[#ff45000f] px-3.5 py-3 text-[12px] leading-5 text-[#ffb070]">
-						<span className="font-bold">Підказка кальянщика.</span> Зміна одного
-						відсотка автоматично перерозподіляє інші, щоб сума завжди була 100%.
-					</div>
-				)}
 
 				{catalogQuery.isError && (
 					<div className="mx-[22px] mt-4 rounded-[10px] border border-[#ff450033] bg-[#ff45000f] px-3 py-2 text-[12px] text-[#ffb070]">

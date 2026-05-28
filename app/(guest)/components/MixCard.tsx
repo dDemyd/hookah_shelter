@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { PresetMix } from "../presets/preset-data";
 import { SmokeLayer } from "./SmokeLayer";
+import { StarRatingDisplay } from "./StarRating";
 import { StrengthMeter } from "./StrengthMeter";
 
 export function MixCard({ mix }: { mix: PresetMix }) {
@@ -40,6 +41,16 @@ export function MixCard({ mix }: { mix: PresetMix }) {
           Мікс дня
         </div>
       ) : null}
+
+      <div
+        className="absolute top-3 right-3 flex items-center gap-1 rounded px-2 py-1 backdrop-blur"
+        style={{ background: "rgba(20,12,12,0.78)" }}
+      >
+        <StarRatingDisplay value={mix.ratingAvg} size={11} />
+        <span className="text-[10px] font-bold tabular-nums text-white">
+          {mix.ratingAvg.toFixed(1)}
+        </span>
+      </div>
 
       {/* Smoke wisp */}
       <svg

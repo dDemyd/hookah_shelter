@@ -158,6 +158,23 @@ export const ChevronIcon = ({ size = 16, className }: IconProps) => (
   </svg>
 );
 
+export const HeartIcon = ({ size = 16, className, filled = false }: HomeProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    className={className}
+  >
+    <path
+      d="M12 20.5l-1.6-1.45C5.4 14.6 2.5 11.95 2.5 8.75 2.5 6.2 4.5 4.2 7 4.2c1.55 0 3.05.75 4 1.95.95-1.2 2.45-1.95 4-1.95 2.5 0 4.5 2 4.5 4.55 0 3.2-2.9 5.85-7.9 10.3L12 20.5Z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const FlameIcon = ({ size = 14, className }: IconProps) => (
   <svg
     width={size}

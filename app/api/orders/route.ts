@@ -13,6 +13,7 @@ import {
 } from "@/lib/constants";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { generateShortCode } from "@/lib/utils/generate-short-code";
+import { normalizeUkrainianPhone } from "@/lib/utils/phone";
 
 const ingredientSchema = z.object({
   tobaccoId: z.string().min(1),
@@ -65,6 +66,20 @@ const createOrderSchema = z
           path: ["ingredients"],
         });
       }
+    }
+    if (value.tableId === null && !value.guestContact) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Телефон обовʼязковий для замовлень на винос.",
+        path: ["guestContact"],
+      });
+    }
+    if (value.guestContact && !normalizeUkrainianPhone(value.guestContact)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Вкажіть український номер телефону.",
+        path: ["guestContact"],
+      });
     }
   });
 
@@ -120,6 +135,9 @@ export async function POST(request: Request) {
   }
 
   const body = parsed.data;
+  const normalizedPhone = body.guestContact
+    ? normalizeUkrainianPhone(body.guestContact)
+    : null;
   const supabase = createSupabaseServiceClient();
   const shortCode = await generateUniqueShortCode(supabase);
 
@@ -234,7 +252,7 @@ export async function POST(request: Request) {
       table_id: body.tableId ?? null,
       guest_id: body.guestId ?? null,
       guest_name: body.guestName || null,
-      guest_contact: body.guestContact || null,
+      guest_contact: normalizedPhone,
       notes: body.notes || null,
       preset_mix_id: body.presetMixId ?? null,
       service_type: body.serviceType,

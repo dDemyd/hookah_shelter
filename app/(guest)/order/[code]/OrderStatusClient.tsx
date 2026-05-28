@@ -10,6 +10,7 @@ import {
 } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchOrderByCode } from "../order-data";
+import { OrderReviewSection } from "./OrderReviewSection";
 
 const STATUS_STEPS: OrderStatus[] = [
   "pending",
@@ -208,6 +209,12 @@ export function OrderStatusClient({ code }: { code: string }) {
           ))}
         </div>
       </section>
+
+      <OrderReviewSection
+        orderId={order.id}
+        orderGuestId={order.guestId}
+        status={order.status}
+      />
     </div>
   );
 }
