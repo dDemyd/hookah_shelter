@@ -18,6 +18,7 @@ type OrderRow = {
   service_type: ServiceType;
   price: number;
   preset_mix_id: string | null;
+  accepted_by: string | null;
   created_at: string;
 };
 
@@ -33,12 +34,35 @@ type PresetRow = {
   name: string;
 };
 
+type StaffProfileRow = {
+  id: string;
+  full_name: string;
+  is_active: boolean;
+};
+
+type StaffStatsRow = {
+  profileId: string;
+  fullName: string;
+  accepted: number;
+  active: number;
+  delivered: number;
+  closed: number;
+  cancelled: number;
+  revenue: number;
+};
+
 const PERIODS: { id: Period; label: string }[] = [
   { id: "today", label: "Сьогодні" },
   { id: "week", label: "7 днів" },
   { id: "month", label: "30 днів" },
   { id: "all", label: "Весь час" },
 ];
+
+const STAFF_ACTIVE_STATUSES = new Set<OrderStatus>([
+  "accepted",
+  "preparing",
+  "ready",
+]);
 
 function startOfPeriod(period: Period): string | null {
   const d = new Date();
@@ -66,7 +90,7 @@ export function StatsClient() {
     queryFn: async (): Promise<OrderRow[]> => {
       let query = supabase
         .from("orders")
-        .select("id,status,service_type,price,preset_mix_id,created_at");
+        .select("id,status,service_type,price,preset_mix_id,accepted_by,created_at");
       if (since) query = query.gte("created_at", since);
       const { data, error } = await query;
       if (error) throw error;
@@ -102,11 +126,37 @@ export function StatsClient() {
     },
   });
 
-  const orders = ordersQuery.data ?? [];
+  const staffQuery = useQuery({
+    queryKey: ["admin-stats", "staff-profiles"],
+    queryFn: async (): Promise<StaffProfileRow[]> => {
+      const { data, error } = await supabase
+        .from("staff_profiles")
+        .select("id,full_name,is_active")
+        .order("full_name", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as StaffProfileRow[];
+    },
+  });
+
+  const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data]);
   const tobaccos = tobaccosQuery.data ?? [];
+  const staffProfiles = useMemo(
+    () => staffQuery.data ?? [],
+    [staffQuery.data],
+  );
   const presetNameById = useMemo(
     () => new Map((presetsQuery.data ?? []).map((p) => [p.id, p.name])),
     [presetsQuery.data],
+  );
+  const staffNameById = useMemo(
+    () =>
+      new Map(
+        staffProfiles.map((profile) => [
+          profile.id,
+          profile.is_active ? profile.full_name : `${profile.full_name} · вимкн.`,
+        ]),
+      ),
+    [staffProfiles],
   );
 
   // ── Aggregations ─────────────────────────────────────────────
@@ -157,7 +207,65 @@ export function StatsClient() {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
+  const staffStats = useMemo(() => {
+    const rows = new Map<string, StaffStatsRow>();
+    for (const profile of staffProfiles) {
+      rows.set(profile.id, {
+        profileId: profile.id,
+        fullName: profile.is_active
+          ? profile.full_name
+          : `${profile.full_name} · вимкн.`,
+        accepted: 0,
+        active: 0,
+        delivered: 0,
+        closed: 0,
+        cancelled: 0,
+        revenue: 0,
+      });
+    }
+
+    for (const order of orders) {
+      if (!order.accepted_by) continue;
+      if (!rows.has(order.accepted_by)) {
+        rows.set(order.accepted_by, {
+          profileId: order.accepted_by,
+          fullName: staffNameById.get(order.accepted_by) ?? "Невідомий співробітник",
+          accepted: 0,
+          active: 0,
+          delivered: 0,
+          closed: 0,
+          cancelled: 0,
+          revenue: 0,
+        });
+      }
+
+      const row = rows.get(order.accepted_by);
+      if (!row) continue;
+      row.accepted += 1;
+      if (STAFF_ACTIVE_STATUSES.has(order.status)) row.active += 1;
+      if (order.status === "delivered") row.delivered += 1;
+      if (order.status === "closed") row.closed += 1;
+      if (order.status === "cancelled") row.cancelled += 1;
+      if (order.status === "delivered" || order.status === "closed") {
+        row.revenue += order.price;
+      }
+    }
+
+    return [...rows.values()]
+      .filter((row) => row.accepted > 0)
+      .sort(
+        (a, b) =>
+          b.accepted - a.accepted ||
+          b.closed - a.closed ||
+          b.delivered - a.delivered ||
+          b.revenue - a.revenue ||
+          a.fullName.localeCompare(b.fullName, "uk"),
+      );
+  }, [orders, staffNameById, staffProfiles]);
+
   const tobaccoMax = Math.max(1, ...tobaccos.map((t) => t.popularity));
+  const staffMax = Math.max(1, ...staffStats.map((row) => row.accepted));
+  const assignedOrders = orders.filter((order) => order.accepted_by).length;
   const tobaccosBrandLabel = (row: TobaccoRow) =>
     firstRelation(row.tobacco_brands)?.name ?? "—";
 
@@ -332,6 +440,93 @@ export function StatsClient() {
           </div>
         )}
       </Card>
+
+      <Card
+        title="Рейтинг співробітників"
+        subtitle="За accepted_by у замовленнях обраного періоду"
+      >
+        {staffStats.length === 0 ? (
+          <Empty label="Поки немає прийнятих замовлень" />
+        ) : (
+          <div className="space-y-3">
+            <div className="grid gap-2 rounded-md bg-muted/40 p-3 text-xs text-muted-foreground sm:grid-cols-3">
+              <span>
+                Відповідальні:{" "}
+                <b className="text-foreground tabular-nums">{assignedOrders}</b>
+              </span>
+              <span>
+                Без відповідального:{" "}
+                <b className="text-foreground tabular-nums">
+                  {totalOrders - assignedOrders}
+                </b>
+              </span>
+              <span>
+                У рейтингу:{" "}
+                <b className="text-foreground tabular-nums">{staffStats.length}</b>
+              </span>
+            </div>
+            <div className="space-y-2">
+              {staffStats.map((row, index) => (
+                <StaffLeaderboardItem
+                  key={row.profileId}
+                  row={row}
+                  place={index + 1}
+                  max={staffMax}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function StaffLeaderboardItem({
+  row,
+  place,
+  max,
+}: {
+  row: StaffStatsRow;
+  place: number;
+  max: number;
+}) {
+  const pct = max > 0 ? (row.accepted / max) * 100 : 0;
+  return (
+    <div className="rounded-md border bg-background/40 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold">
+            {place}. {row.fullName}
+          </div>
+          <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-5">
+            <span>
+              Прийнято <b className="text-foreground tabular-nums">{row.accepted}</b>
+            </span>
+            <span>
+              В роботі <b className="text-foreground tabular-nums">{row.active}</b>
+            </span>
+            <span>
+              Видано <b className="text-foreground tabular-nums">{row.delivered}</b>
+            </span>
+            <span>
+              Закрито <b className="text-foreground tabular-nums">{row.closed}</b>
+            </span>
+            <span>
+              Дохід <b className="text-foreground tabular-nums">{row.revenue} ₴</b>
+            </span>
+          </div>
+        </div>
+        <div className="shrink-0 text-lg font-extrabold tabular-nums text-[#ff4500]">
+          {row.accepted}
+        </div>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-sm bg-muted">
+        <div
+          className="h-full rounded-sm bg-[#ff4500] transition-all shadow-[0_0_8px_rgba(255,69,0,0.35)]"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

@@ -16,6 +16,11 @@ import {
   keyboardForStatus,
   type FormatOrderIngredient,
 } from "./format-order";
+import {
+  formatLeaderboard,
+  formatPersonalStats,
+  formatShiftStats,
+} from "./staff-stats";
 import { ALLOWED_TRANSITIONS } from "./status-transitions";
 
 // Subset of the Telegram Update payload we care about.
@@ -124,6 +129,63 @@ function extractLinkEmail(text: string | undefined): string | null {
   return value.toLowerCase();
 }
 
+function parseCommand(text: string | undefined): string | null {
+  const command = text?.trim().split(/\s+/)[0]?.toLowerCase();
+  if (!command?.startsWith("/")) return null;
+  return command.split("@")[0] ?? null;
+}
+
+function helpText(): string {
+  return [
+    "<b>Команди бота</b>",
+    "<code>/link email@example.com</code> — привʼязати Telegram",
+    "<code>/me</code> — моя статистика за сьогодні",
+    "<code>/stats</code> — статистика зміни за сьогодні",
+    "<code>/leaderboard</code> — рейтинг співробітників за сьогодні",
+  ].join("\n");
+}
+
+async function handleStatsCommand(
+  command: string,
+  message: TelegramMessage,
+): Promise<boolean> {
+  if (!message.from) return true;
+
+  if (command === "/start" || command === "/help") {
+    await sendTelegramMessage({
+      chatId: message.chat.id,
+      text: helpText(),
+    });
+    return true;
+  }
+
+  if (command === "/me") {
+    await sendTelegramMessage({
+      chatId: message.chat.id,
+      text: await formatPersonalStats(message.from.id),
+    });
+    return true;
+  }
+
+  if (command === "/stats") {
+    await sendTelegramMessage({
+      chatId: message.chat.id,
+      text: await formatShiftStats(message.from.id),
+    });
+    return true;
+  }
+
+  if (command === "/leaderboard") {
+    await sendTelegramMessage({
+      chatId: message.chat.id,
+      text: await formatLeaderboard(message.from.id),
+    });
+    return true;
+  }
+
+  return false;
+}
+
 async function findAuthUserIdByEmail(
   email: string,
   supabase: ReturnType<typeof createSupabaseServiceClient>,
@@ -142,6 +204,9 @@ async function findAuthUserIdByEmail(
 
 async function handleTelegramMessage(message: TelegramMessage): Promise<void> {
   if (!message.from) return;
+
+  const command = parseCommand(message.text);
+  if (command && (await handleStatsCommand(command, message))) return;
 
   if (message.chat.type && message.chat.type !== "private") {
     await sendTelegramMessage({
