@@ -287,6 +287,53 @@ export function RandomMixSheet({
   const [landedCount, setLandedCount] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [muted, setMutedState] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragState = useRef<{
+    pointerId: number;
+    startY: number;
+    lastY: number;
+    lastTime: number;
+    velocity: number;
+    offset: number;
+  } | null>(null);
+
+  const startDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!open || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const now = performance.now();
+    dragState.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      lastY: event.clientY,
+      lastTime: now,
+      velocity: 0,
+      offset: 0,
+    };
+    setIsDragging(true);
+    setDragOffset(0);
+  };
+  const moveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragState.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const now = performance.now();
+    const delta = Math.max(0, event.clientY - drag.startY);
+    const elapsed = Math.max(1, now - drag.lastTime);
+    drag.velocity = (event.clientY - drag.lastY) / elapsed;
+    drag.offset = Math.min(delta, 220);
+    drag.lastY = event.clientY;
+    drag.lastTime = now;
+    setDragOffset(drag.offset);
+  };
+  const finishDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragState.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const shouldClose = drag.offset > 80 || drag.velocity > 0.45;
+    dragState.current = null;
+    setIsDragging(false);
+    setDragOffset(0);
+    if (shouldClose) onClose();
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -313,7 +360,13 @@ export function RandomMixSheet({
   }, [allLanded, result]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      // Unmount the reels so their timeouts/animations cancel — otherwise
+      // thunks keep firing in the background after the sheet is dismissed.
+      setResult(null);
+      setLandedCount(0);
+      return;
+    }
     setResult(rollMix(catalog, slotCount));
     setLandedCount(0);
     setRollKey((k) => k + 1);
@@ -375,13 +428,24 @@ export function RandomMixSheet({
       <div
         className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
         style={{
-          transform: open ? "translateY(0)" : "translateY(100%)",
+          transform: open
+            ? `translateY(${dragOffset}px)`
+            : "translateY(100%)",
+          transitionDuration: isDragging ? "0ms" : undefined,
         }}
         aria-hidden={!open}
       >
-        <div className="flex min-h-11 items-center justify-center pt-2.5">
+        <button
+          type="button"
+          aria-label="Потягни вниз, щоб закрити"
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          className="flex min-h-11 touch-none cursor-grab items-center justify-center rounded-t-[24px] py-2.5 active:cursor-grabbing"
+        >
           <span className="h-1 w-10 rounded-full bg-white/20" />
-        </div>
+        </button>
         <div className="flex items-center justify-between px-[22px] pb-3">
           <div>
             <div className="text-[10px] font-bold tracking-[2.4px] text-[#ff4500] uppercase">
