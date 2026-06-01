@@ -26,6 +26,8 @@ import { SmokeLayer } from "../components/SmokeLayer";
 import { ChevronIcon, PlusIcon } from "../components/Icon";
 import { ServiceSheet } from "../components/ServiceSheet";
 import { useDraftsStore } from "@/lib/stores/drafts-store";
+import { RandomMixSheet, type RandomMixResult } from "./RandomMixSheet";
+import { unlockAudio } from "./random-mix-audio";
 
 type Pick = CatalogTobacco & { pct: number };
 
@@ -738,6 +740,7 @@ export function MixerClient() {
 	const maxIngredients = settings.maxIngredientsPerMix;
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [serviceOpen, setServiceOpen] = useState(false);
+	const [randomOpen, setRandomOpen] = useState(false);
 
 	const picks = useMemo(
 		() =>
@@ -774,6 +777,18 @@ export function MixerClient() {
 		addTobacco(item.id);
 		setPickerOpen(false);
 		toast(`${item.uname} додано`);
+	};
+
+	const applyRandomMix = (result: RandomMixResult) => {
+		clear();
+		result.picks.forEach((pick) => addTobacco(pick.id));
+		if (result.overpack) setOverpack(true);
+		if (result.cool) {
+			setCool(true);
+			setCoolIntensity(result.coolIntensity);
+		}
+		setRandomOpen(false);
+		toast("Рандомний мікс зібрано");
 	};
 
 	const saveDraft = () => {
@@ -855,6 +870,44 @@ export function MixerClient() {
 							{picks.length} / {maxIngredients} · {sumPct}%
 						</span>
 					</div>
+					{picks.length === 0 && (
+						<button
+							type="button"
+							onClick={() => {
+								unlockAudio();
+								setRandomOpen(true);
+							}}
+							disabled={catalog.length === 0}
+							className="tap animate-fade-up relative mb-2.5 flex w-full items-center gap-3 overflow-hidden rounded-[14px] border p-3.5 text-left disabled:opacity-50"
+							style={{
+								background:
+									"linear-gradient(135deg, rgba(255,69,0,0.18) 0%, rgba(255,69,0,0.05) 55%, rgba(120,180,255,0.08) 100%)",
+								borderColor: "rgba(255,69,0,0.35)",
+								boxShadow: "0 0 18px rgba(255,69,0,0.12)",
+							}}
+						>
+							<div
+								className="flex size-12 shrink-0 items-center justify-center rounded-[12px] text-[22px]"
+								style={{
+									background:
+										"linear-gradient(180deg, #ff6a1f 0%, #ff4500 50%, #d83400 100%)",
+									boxShadow:
+										"0 0 16px rgba(255,69,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
+								}}
+							>
+								🎲
+							</div>
+							<div className="min-w-0 flex-1">
+								<div className="text-[14px] font-bold text-white">
+									Не знаєш, що взяти?
+								</div>
+								<div className="mt-0.5 text-[11px] leading-snug text-[#ffb070]">
+									Крути рандом — підбере мікс, оверпак і холодок.
+								</div>
+							</div>
+							<ChevronIcon size={14} />
+						</button>
+					)}
 					<div className="flex flex-col gap-2.5">
 						{picks.map((pick) => (
 							<SlotCard
@@ -968,6 +1021,14 @@ export function MixerClient() {
 				isOverpack={isOverpack}
 				onClose={() => setServiceOpen(false)}
 				onConfirm={confirmOrder}
+			/>
+
+			<RandomMixSheet
+				open={randomOpen}
+				catalog={catalog}
+				slotCount={maxIngredients}
+				onClose={() => setRandomOpen(false)}
+				onApply={applyRandomMix}
 			/>
 		</div>
 	);
