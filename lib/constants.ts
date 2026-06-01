@@ -51,6 +51,13 @@ export const SERVICE_TYPE_PRICES: Record<ServiceType, number> = {
 export const COOL_MAX_INTENSITY = 3;
 export const COOL_MIN_INTENSITY = 1;
 
+// Default chances (0..1) for the random-mix slot machine. Admins can
+// override these from /admin/settings — these are just the fallbacks if
+// the DB row is missing or the API call fails.
+export const JACKPOT_CHANCE_DEFAULT = 0.01;
+export const OVERPACK_CHANCE_DEFAULT = 0.05;
+export const COOL_CHANCE_DEFAULT = 0.25;
+
 export const ORDER_STATUSES = [
   "pending",
   "accepted",

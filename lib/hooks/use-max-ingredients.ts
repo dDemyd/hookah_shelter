@@ -2,10 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  COOL_CHANCE_DEFAULT,
   DAY_LOANER_DEPOSIT_UAH,
   DAY_LOANER_PRICE_UAH,
   DEFAULT_PRICE_UAH,
+  JACKPOT_CHANCE_DEFAULT,
   MAX_INGREDIENTS_PER_MIX,
+  OVERPACK_CHANCE_DEFAULT,
   OVERPACK_PRICE_UAH,
   REFILL_PRICE_UAH,
 } from "@/lib/constants";
@@ -18,6 +21,9 @@ type PublicSettings = {
   dayLoanerPrice: number;
   dayLoanerDeposit: number;
   overpackPrice: number;
+  jackpotChance: number;
+  overpackChance: number;
+  coolChance: number;
 };
 
 const FALLBACK_PUBLIC_SETTINGS: PublicSettings = {
@@ -28,6 +34,9 @@ const FALLBACK_PUBLIC_SETTINGS: PublicSettings = {
   dayLoanerPrice: DAY_LOANER_PRICE_UAH,
   dayLoanerDeposit: DAY_LOANER_DEPOSIT_UAH,
   overpackPrice: OVERPACK_PRICE_UAH,
+  jackpotChance: JACKPOT_CHANCE_DEFAULT,
+  overpackChance: OVERPACK_CHANCE_DEFAULT,
+  coolChance: COOL_CHANCE_DEFAULT,
 };
 
 /** Reads `app_settings.max_ingredients_per_mix` (via the public settings API,

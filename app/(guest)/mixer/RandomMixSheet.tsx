@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { COOL_MAX_INTENSITY, COOL_MIN_INTENSITY } from "@/lib/constants";
+import { usePublicSettings } from "@/lib/hooks/use-max-ingredients";
 import type { CatalogTobacco } from "../catalog/_catalog-data";
 import {
   isMuted as readMuted,
@@ -15,9 +16,6 @@ import {
   type ScheduledAudio,
 } from "./random-mix-audio";
 
-const OVERPACK_CHANCE = 0.05;
-const COOL_CHANCE = 0.25;
-const JACKPOT_CHANCE = 0.01;
 const CELL_H = 104;
 const STRIP_LENGTH = 32;
 // Stagger reel stop times so the eye reads "drumroll" — left first, right last.
@@ -68,8 +66,18 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-function rollMix(catalog: CatalogTobacco[], slotCount: number): RandomMixResult {
-  const jackpot = Math.random() < JACKPOT_CHANCE;
+type Chances = {
+  jackpot: number;
+  overpack: number;
+  cool: number;
+};
+
+function rollMix(
+  catalog: CatalogTobacco[],
+  slotCount: number,
+  chances: Chances,
+): RandomMixResult {
+  const jackpot = Math.random() < chances.jackpot;
   if (jackpot) {
     const picks = Array.from({ length: slotCount }, (_, i) => makeKissPick(i));
     return {
@@ -84,8 +92,8 @@ function rollMix(catalog: CatalogTobacco[], slotCount: number): RandomMixResult 
   const picks = shuffle(available).slice(0, Math.min(slotCount, available.length));
   return {
     picks,
-    overpack: Math.random() < OVERPACK_CHANCE,
-    cool: Math.random() < COOL_CHANCE,
+    overpack: Math.random() < chances.overpack,
+    cool: Math.random() < chances.cool,
     coolIntensity:
       COOL_MIN_INTENSITY +
       Math.floor(Math.random() * (COOL_MAX_INTENSITY - COOL_MIN_INTENSITY + 1)),
@@ -388,6 +396,19 @@ export function RandomMixSheet({
     () => catalog.filter((item) => item.inStock),
     [catalog],
   );
+  const publicSettings = usePublicSettings();
+  const chances = useMemo<Chances>(
+    () => ({
+      jackpot: publicSettings.jackpotChance,
+      overpack: publicSettings.overpackChance,
+      cool: publicSettings.coolChance,
+    }),
+    [
+      publicSettings.jackpotChance,
+      publicSettings.overpackChance,
+      publicSettings.coolChance,
+    ],
+  );
   const [rollKey, setRollKey] = useState(0);
   const [result, setResult] = useState<RandomMixResult | null>(null);
   const [landedCount, setLandedCount] = useState(0);
@@ -477,9 +498,12 @@ export function RandomMixSheet({
       setLandedCount(0);
       return;
     }
-    setResult(rollMix(catalog, slotCount));
+    setResult(rollMix(catalog, slotCount, chances));
     setLandedCount(0);
     setRollKey((k) => k + 1);
+    // chances intentionally excluded from deps — we don't want a settings refetch
+    // mid-session to silently re-roll the current spin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, catalog, slotCount]);
 
   // One spin-sound per roll. Cleanup cuts it off when the user closes
@@ -507,7 +531,7 @@ export function RandomMixSheet({
 
   const reroll = () => {
     if (!allLanded) return;
-    setResult(rollMix(catalog, slotCount));
+    setResult(rollMix(catalog, slotCount, chances));
     setLandedCount(0);
     setRollKey((k) => k + 1);
   };

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import {
+  COOL_CHANCE_DEFAULT,
   DAY_LOANER_DEPOSIT_UAH,
   DAY_LOANER_PRICE_UAH,
   DEFAULT_PRICE_UAH,
+  JACKPOT_CHANCE_DEFAULT,
   MAX_INGREDIENTS_LIMIT,
   MAX_INGREDIENTS_PER_MIX,
   MIN_INGREDIENTS_LIMIT,
+  OVERPACK_CHANCE_DEFAULT,
   OVERPACK_PRICE_UAH,
   REFILL_PRICE_UAH,
 } from "@/lib/constants";
@@ -27,6 +30,9 @@ export async function GET() {
       "day_loaner_price",
       "day_loaner_deposit",
       "overpack_price",
+      "jackpot_chance_percent",
+      "overpack_chance_percent",
+      "cool_chance_percent",
     ]);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -44,6 +50,11 @@ export async function GET() {
     const n = typeof raw === "number" ? raw : Number(raw);
     return Number.isFinite(n) && n >= 0 ? n : fallback;
   };
+  const chanceFromPercent = (raw: unknown, fallback: number): number => {
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(1, Math.max(0, n / 100));
+  };
 
   return NextResponse.json(
     {
@@ -57,6 +68,19 @@ export async function GET() {
         DAY_LOANER_DEPOSIT_UAH,
       ),
       overpackPrice: settingNumber("overpack_price", OVERPACK_PRICE_UAH),
+      // Chances stored as integer percent (0..100). Clamp + convert to 0..1.
+      jackpotChance: chanceFromPercent(
+        map.get("jackpot_chance_percent"),
+        JACKPOT_CHANCE_DEFAULT,
+      ),
+      overpackChance: chanceFromPercent(
+        map.get("overpack_chance_percent"),
+        OVERPACK_CHANCE_DEFAULT,
+      ),
+      coolChance: chanceFromPercent(
+        map.get("cool_chance_percent"),
+        COOL_CHANCE_DEFAULT,
+      ),
     },
     {
       headers: {

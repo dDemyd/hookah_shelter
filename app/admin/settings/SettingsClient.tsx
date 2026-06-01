@@ -108,6 +108,33 @@ const KNOWN: SettingField[] = [
     kind: "text",
     placeholder: "-1001234567890",
   },
+  {
+    key: "jackpot_chance_percent",
+    label: "Шанс джекпоту (%)",
+    description:
+      "Імовірність випадання джекпоту в рандомному міксі. Ціле число від 0 до 100.",
+    kind: "number",
+    min: 0,
+    max: 100,
+  },
+  {
+    key: "overpack_chance_percent",
+    label: "Шанс оверпаку (%)",
+    description:
+      "Імовірність випадання оверпаку в рандомному міксі. Ціле число від 0 до 100.",
+    kind: "number",
+    min: 0,
+    max: 100,
+  },
+  {
+    key: "cool_chance_percent",
+    label: "Шанс холодку (%)",
+    description:
+      "Імовірність випадання холодку в рандомному міксі. Ціле число від 0 до 100.",
+    kind: "number",
+    min: 0,
+    max: 100,
+  },
 ];
 
 function parseStored(value: Json, kind: SettingField["kind"]): string | boolean {
