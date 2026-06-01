@@ -7,6 +7,7 @@ import type { CatalogTobacco } from "../catalog/_catalog-data";
 import {
   isMuted as readMuted,
   playBonusChime,
+  playFanfare,
   playSpin,
   playThunk,
   setMuted as persistMuted,
@@ -459,16 +460,10 @@ export function RandomMixSheet({
     if (!allLanded || !result) return;
     if (!result.overpack && !result.cool && !result.jackpot) return;
     try {
-      playBonusChime();
       if (result.jackpot) {
-        // Second sparkle for the jackpot since it's a bigger moment.
-        setTimeout(() => {
-          try {
-            playBonusChime();
-          } catch {
-            /* audio is non-essential */
-          }
-        }, 320);
+        playFanfare();
+      } else {
+        playBonusChime();
       }
     } catch {
       /* audio is non-essential */
@@ -662,6 +657,9 @@ export function RandomMixSheet({
                       Ви виграли поцілуй від Бармена{" "}
                       <span aria-hidden>😏</span>
                     </div>
+                    <div className="mt-2 text-[11px] font-medium text-white/70">
+                      Підходьте до бару щоб забрати виграш
+                    </div>
                   </div>
                 )
               ) : (
@@ -720,25 +718,32 @@ export function RandomMixSheet({
             </button>
             <button
               type="button"
-              onClick={result?.jackpot ? onClose : handleApply}
+              onClick={handleApply}
               disabled={
-                !allLanded || !result || result.picks.length === 0
+                !allLanded ||
+                !result ||
+                result.picks.length === 0 ||
+                result.jackpot
               }
               className="tap flex h-[52px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold disabled:text-[#555]"
               style={{
                 background:
-                  allLanded && result && result.picks.length > 0
-                    ? result.jackpot
-                      ? "linear-gradient(180deg, #ff7adc 0%, #ff4dd2 50%, #ff4500 100%)"
-                      : "linear-gradient(180deg, #ff6a1f 0%, #ff4500 50%, #d83400 100%)"
+                  allLanded &&
+                  result &&
+                  result.picks.length > 0 &&
+                  !result.jackpot
+                    ? "linear-gradient(180deg, #ff6a1f 0%, #ff4500 50%, #d83400 100%)"
                     : "rgba(255,255,255,0.05)",
                 color:
-                  allLanded && result && result.picks.length > 0
+                  allLanded &&
+                  result &&
+                  result.picks.length > 0 &&
+                  !result.jackpot
                     ? "#fff"
                     : undefined,
               }}
             >
-              {result?.jackpot ? "Забрати поцілуй 💋" : "Застосувати"}
+              Застосувати
             </button>
           </div>
         </div>

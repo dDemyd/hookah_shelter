@@ -189,6 +189,78 @@ export function playThunk(reelIndex: number): void {
   });
 }
 
+/**
+ * Big synthesized fanfare for the jackpot reveal — a brassy "ta-da-daa"
+ * arpeggio that climbs to a held major chord, with a sparkle on top.
+ * No mp3 needed: layers triangle + square oscillators with envelopes.
+ */
+export function playFanfare(): void {
+  if (muted) return;
+  const c = getCtx();
+  if (!c) return;
+  const t0 = c.currentTime;
+  if (!Number.isFinite(t0)) return;
+
+  const master = c.createGain();
+  master.gain.value = 0.85;
+  master.connect(c.destination);
+
+  // Two voices per note: triangle (body) + square (brassy edge).
+  const tone = (freq: number, start: number, dur: number, peak = 0.18) => {
+    const when = t0 + start;
+    const stop = when + dur;
+    const body = c.createOscillator();
+    const edge = c.createOscillator();
+    const gain = c.createGain();
+    body.type = "triangle";
+    edge.type = "square";
+    body.frequency.value = freq;
+    edge.frequency.value = freq;
+    // Slight detune on the edge voice keeps it from sounding sterile.
+    edge.detune.value = 8;
+    const edgeGain = c.createGain();
+    edgeGain.gain.value = 0.22;
+    edge.connect(edgeGain).connect(gain);
+    body.connect(gain);
+    gain.gain.setValueAtTime(0, when);
+    gain.gain.linearRampToValueAtTime(peak, when + 0.02);
+    gain.gain.linearRampToValueAtTime(peak * 0.7, when + dur * 0.55);
+    gain.gain.exponentialRampToValueAtTime(0.001, stop);
+    gain.connect(master);
+    body.start(when);
+    edge.start(when);
+    body.stop(stop + 0.02);
+    edge.stop(stop + 0.02);
+  };
+
+  // "Ta — da — daa" pickup → held major triad (C E G C).
+  tone(523.25, 0.0, 0.16); // C5
+  tone(659.25, 0.16, 0.16); // E5
+  tone(783.99, 0.32, 0.18); // G5
+
+  // Held chord: C5 + E5 + G5 + C6 sustained ~0.9s.
+  tone(523.25, 0.55, 0.95, 0.16);
+  tone(659.25, 0.55, 0.95, 0.13);
+  tone(783.99, 0.55, 0.95, 0.13);
+  tone(1046.5, 0.55, 0.95, 0.12);
+
+  // Sparkle on top — quick descending arpeggio.
+  const sparkle = [1568.0, 1318.51, 1046.5, 1318.51, 1568.0];
+  sparkle.forEach((f, i) => {
+    const when = t0 + 0.7 + i * 0.07;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = "sine";
+    osc.frequency.value = f;
+    gain.gain.setValueAtTime(0, when);
+    gain.gain.linearRampToValueAtTime(0.09, when + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, when + 0.22);
+    osc.connect(gain).connect(master);
+    osc.start(when);
+    osc.stop(when + 0.24);
+  });
+}
+
 /** Sparkle arpeggio when a bonus (overpack/cool) rolls — synthesized. */
 export function playBonusChime(): void {
   if (muted) return;
