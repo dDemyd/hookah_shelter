@@ -16,17 +16,48 @@ import {
 
 const OVERPACK_CHANCE = 0.05;
 const COOL_CHANCE = 0.25;
+// TODO: lower this back to ~0.01 after the jackpot reveal is QA'd.
+const JACKPOT_CHANCE = 1;
 const CELL_H = 104;
 const STRIP_LENGTH = 32;
 // Stagger reel stop times so the eye reads "drumroll" — left first, right last.
 const SPIN_DURATIONS_MS = [2200, 2900, 3600, 4300];
+
+const KISS_EMOJIS = ["💋", "😘", "💋", "😘"];
 
 export type RandomMixResult = {
   picks: CatalogTobacco[];
   overpack: boolean;
   cool: boolean;
   coolIntensity: number;
+  jackpot: boolean;
 };
+
+const JACKPOT_PREFIX = "jackpot-kiss-";
+
+function makeKissPick(index: number): CatalogTobacco {
+  return {
+    id: `${JACKPOT_PREFIX}${index}`,
+    brand: "JACKPOT",
+    flavor: KISS_EMOJIS[index % KISS_EMOJIS.length] ?? "💋",
+    uname: KISS_EMOJIS[index % KISS_EMOJIS.length] ?? "💋",
+    cat: "jackpot",
+    strength: 0,
+    smoke: 0,
+    imageUrl: null,
+    color: "#ff4dd2",
+    popularity: 0,
+    likesCount: 0,
+    inStock: true,
+    isNew: false,
+    desc: "",
+    pairs: [],
+  };
+}
+
+function isKissItem(item: CatalogTobacco): boolean {
+  return item.id.startsWith(JACKPOT_PREFIX);
+}
 
 function shuffle<T>(items: T[]): T[] {
   const arr = items.slice();
@@ -38,6 +69,17 @@ function shuffle<T>(items: T[]): T[] {
 }
 
 function rollMix(catalog: CatalogTobacco[], slotCount: number): RandomMixResult {
+  const jackpot = Math.random() < JACKPOT_CHANCE;
+  if (jackpot) {
+    const picks = Array.from({ length: slotCount }, (_, i) => makeKissPick(i));
+    return {
+      picks,
+      overpack: false,
+      cool: false,
+      coolIntensity: COOL_MIN_INTENSITY,
+      jackpot: true,
+    };
+  }
   const available = catalog.filter((t) => t.inStock);
   const picks = shuffle(available).slice(0, Math.min(slotCount, available.length));
   return {
@@ -47,6 +89,7 @@ function rollMix(catalog: CatalogTobacco[], slotCount: number): RandomMixResult 
     coolIntensity:
       COOL_MIN_INTENSITY +
       Math.floor(Math.random() * (COOL_MAX_INTENSITY - COOL_MIN_INTENSITY + 1)),
+    jackpot: false,
   };
 }
 
@@ -67,6 +110,26 @@ function buildStrip(
 }
 
 function ReelCell({ item }: { item: CatalogTobacco }) {
+  if (isKissItem(item)) {
+    return (
+      <div
+        className="flex w-full flex-col items-center justify-center px-1"
+        style={{ height: CELL_H }}
+      >
+        <div
+          className="text-[44px] leading-none"
+          style={{
+            filter: "drop-shadow(0 0 14px rgba(255,77,210,0.55))",
+          }}
+        >
+          {item.flavor}
+        </div>
+        <div className="mt-1.5 text-[8.5px] font-bold tracking-[1.4px] text-[#ff4dd2] uppercase">
+          Jackpot
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className="flex w-full flex-col items-center justify-center gap-1.5 px-1"
@@ -87,6 +150,49 @@ function ReelCell({ item }: { item: CatalogTobacco }) {
           {item.uname}
         </div>
       </div>
+    </div>
+  );
+}
+
+const CONFETTI_GLYPHS = ["💋", "💕", "💖", "✨", "🌟", "💘", "😘"];
+
+function Confetti({ pieces = 36 }: { pieces?: number }) {
+  // Generate once per mount — re-rolls would shuffle positions mid-animation.
+  const items = useMemo(
+    () =>
+      Array.from({ length: pieces }, (_, i) => ({
+        id: i,
+        glyph:
+          CONFETTI_GLYPHS[Math.floor(Math.random() * CONFETTI_GLYPHS.length)],
+        left: Math.random() * 100,
+        delay: Math.random() * 600,
+        duration: 1800 + Math.random() * 1800,
+        drift: Math.round((Math.random() - 0.5) * 200),
+        spin: Math.round(360 + Math.random() * 720),
+        size: 16 + Math.random() * 18,
+      })),
+    [pieces],
+  );
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {items.map((p) => (
+        <span
+          key={p.id}
+          className="animate-confetti-fall absolute top-0 select-none"
+          style={
+            {
+              left: `${p.left}%`,
+              fontSize: `${p.size}px`,
+              animationDelay: `${p.delay}ms`,
+              ["--confetti-duration" as string]: `${p.duration}ms`,
+              ["--confetti-drift" as string]: `${p.drift}px`,
+              ["--confetti-spin" as string]: `${p.spin}deg`,
+            } as React.CSSProperties
+          }
+        >
+          {p.glyph}
+        </span>
+      ))}
     </div>
   );
 }
@@ -351,9 +457,19 @@ export function RandomMixSheet({
 
   useEffect(() => {
     if (!allLanded || !result) return;
-    if (!result.overpack && !result.cool) return;
+    if (!result.overpack && !result.cool && !result.jackpot) return;
     try {
       playBonusChime();
+      if (result.jackpot) {
+        // Second sparkle for the jackpot since it's a bigger moment.
+        setTimeout(() => {
+          try {
+            playBonusChime();
+          } catch {
+            /* audio is non-essential */
+          }
+        }, 320);
+      }
     } catch {
       /* audio is non-essential */
     }
@@ -404,6 +520,8 @@ export function RandomMixSheet({
 
   const handleApply = () => {
     if (!result || !allLanded || result.picks.length === 0) return;
+    // Jackpot picks are kiss stickers, not real tobacco — can't apply to mix.
+    if (result.jackpot) return;
     onApply(result);
   };
 
@@ -426,7 +544,7 @@ export function RandomMixSheet({
         }}
       />
       <div
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-md flex-col rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-md flex-col overflow-hidden rounded-t-[24px] border border-b-0 border-white/[0.06] bg-[#141010] shadow-[0_-20px_60px_rgba(0,0,0,0.6)] transition-transform duration-300"
         style={{
           transform: open
             ? `translateY(${dragOffset}px)`
@@ -435,6 +553,7 @@ export function RandomMixSheet({
         }}
         aria-hidden={!open}
       >
+        {result?.jackpot && allLanded && <Confetti pieces={42} />}
         <button
           type="button"
           aria-label="Потягни вниз, щоб закрити"
@@ -516,38 +635,71 @@ export function RandomMixSheet({
                 />
               </div>
 
-              <div className="mt-3 flex gap-2.5">
-                <AddOnLamp
-                  active={result.overpack}
-                  reveal={allLanded}
-                  icon="⚡"
-                  label="Оверпак"
-                  color="#ff4500"
-                  detail={result.overpack ? "у міксі" : "без оверпаку"}
-                />
-                <AddOnLamp
-                  active={result.cool}
-                  reveal={allLanded}
-                  icon="❄"
-                  label="Холодок"
-                  color="#3b82f6"
-                  detail={
-                    result.cool
-                      ? `інтенсивність ${result.coolIntensity}/${COOL_MAX_INTENSITY}`
-                      : "без холодку"
-                  }
-                />
-              </div>
+              {result.jackpot ? (
+                allLanded && (
+                  <div
+                    className="animate-jackpot-pop mt-4 rounded-[16px] border px-4 py-4 text-center"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, rgba(255,77,210,0.18) 0%, rgba(255,69,0,0.18) 100%)",
+                      borderColor: "rgba(255,77,210,0.55)",
+                      boxShadow:
+                        "0 0 28px rgba(255,77,210,0.35), inset 0 1px 0 rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div
+                      className="animate-jackpot-shimmer text-[28px] font-black tracking-[1px] text-white"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, #ffd166 0%, #ff4dd2 50%, #ff4500 100%)",
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                      }}
+                    >
+                      JACKPOT!
+                    </div>
+                    <div className="mt-1.5 text-[13px] font-semibold text-white">
+                      Ви виграли поцілуй від Бармена{" "}
+                      <span aria-hidden>😏</span>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <>
+                  <div className="mt-3 flex gap-2.5">
+                    <AddOnLamp
+                      active={result.overpack}
+                      reveal={allLanded}
+                      icon="⚡"
+                      label="Оверпак"
+                      color="#ff4500"
+                      detail={result.overpack ? "у міксі" : "без оверпаку"}
+                    />
+                    <AddOnLamp
+                      active={result.cool}
+                      reveal={allLanded}
+                      icon="❄"
+                      label="Холодок"
+                      color="#3b82f6"
+                      detail={
+                        result.cool
+                          ? `інтенсивність ${result.coolIntensity}/${COOL_MAX_INTENSITY}`
+                          : "без холодку"
+                      }
+                    />
+                  </div>
 
-              <p
-                className="mt-3 text-center text-[11px] leading-snug text-[#888]"
-                style={{
-                  opacity: allLanded ? 1 : 0,
-                  transition: "opacity 300ms ease 120ms",
-                }}
-              >
-                Подобається? Застосуй або крути ще.
-              </p>
+                  <p
+                    className="mt-3 text-center text-[11px] leading-snug text-[#888]"
+                    style={{
+                      opacity: allLanded ? 1 : 0,
+                      transition: "opacity 300ms ease 120ms",
+                    }}
+                  >
+                    Подобається? Застосуй або крути ще.
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.02] px-4 py-6 text-center text-[12px] text-[#888]">
@@ -568,13 +720,17 @@ export function RandomMixSheet({
             </button>
             <button
               type="button"
-              onClick={handleApply}
-              disabled={!allLanded || !result || result.picks.length === 0}
+              onClick={result?.jackpot ? onClose : handleApply}
+              disabled={
+                !allLanded || !result || result.picks.length === 0
+              }
               className="tap flex h-[52px] flex-1 items-center justify-center rounded-[14px] text-[14px] font-bold disabled:text-[#555]"
               style={{
                 background:
                   allLanded && result && result.picks.length > 0
-                    ? "linear-gradient(180deg, #ff6a1f 0%, #ff4500 50%, #d83400 100%)"
+                    ? result.jackpot
+                      ? "linear-gradient(180deg, #ff7adc 0%, #ff4dd2 50%, #ff4500 100%)"
+                      : "linear-gradient(180deg, #ff6a1f 0%, #ff4500 50%, #d83400 100%)"
                     : "rgba(255,255,255,0.05)",
                 color:
                   allLanded && result && result.picks.length > 0
@@ -582,7 +738,7 @@ export function RandomMixSheet({
                     : undefined,
               }}
             >
-              Застосувати
+              {result?.jackpot ? "Забрати поцілуй 💋" : "Застосувати"}
             </button>
           </div>
         </div>
