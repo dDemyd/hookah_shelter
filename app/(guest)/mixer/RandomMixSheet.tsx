@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { COOL_MAX_INTENSITY, COOL_MIN_INTENSITY } from "@/lib/constants";
 import type { CatalogTobacco } from "../catalog/_catalog-data";
@@ -320,19 +320,27 @@ export function RandomMixSheet({
   }, [open, catalog, slotCount]);
 
   // One spin-sound per roll. Cleanup cuts it off when the user closes
-  // the sheet mid-spin or hits Перекрутити.
+  // the sheet mid-spin or hits Перекрутити. We also cancel it as soon as
+  // the last reel locks in — the spin file is longer than the reels now,
+  // so without this it bleeds past all the thunks.
+  const spinHandleRef = useRef<ScheduledAudio | null>(null);
   useEffect(() => {
     if (!open || rollKey === 0) return;
-    let handle: ScheduledAudio | null = null;
     try {
-      handle = playSpin();
+      spinHandleRef.current = playSpin();
     } catch {
       /* audio is non-essential */
     }
     return () => {
-      handle?.cancel();
+      spinHandleRef.current?.cancel();
+      spinHandleRef.current = null;
     };
   }, [rollKey, open]);
+  useEffect(() => {
+    if (!allLanded) return;
+    spinHandleRef.current?.cancel();
+    spinHandleRef.current = null;
+  }, [allLanded]);
 
   const reroll = () => {
     if (!allLanded) return;
