@@ -5,9 +5,12 @@ import { createPortal } from "react-dom";
 import { COOL_MAX_INTENSITY, COOL_MIN_INTENSITY } from "@/lib/constants";
 import type { CatalogTobacco } from "../catalog/_catalog-data";
 import {
+  isMuted as readMuted,
   playBonusChime,
   playSpin,
   playThunk,
+  setMuted as persistMuted,
+  unlockAudio,
   type ScheduledAudio,
 } from "./random-mix-audio";
 
@@ -283,10 +286,19 @@ export function RandomMixSheet({
   const [result, setResult] = useState<RandomMixResult | null>(null);
   const [landedCount, setLandedCount] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [muted, setMutedState] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    setMutedState(readMuted());
   }, []);
+
+  const toggleMute = () => {
+    const next = !muted;
+    persistMuted(next);
+    setMutedState(next);
+    if (!next) unlockAudio();
+  };
 
   const allLanded = result ? landedCount >= result.picks.length : false;
 
@@ -371,13 +383,24 @@ export function RandomMixSheet({
               Рандомний мікс
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="tap text-[14px] font-semibold text-[#888]"
-          >
-            Закрити
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleMute}
+              aria-label={muted ? "Увімкнути звук" : "Вимкнути звук"}
+              aria-pressed={muted}
+              className="tap flex size-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-[15px] text-white/80"
+            >
+              <span aria-hidden>{muted ? "🔇" : "🔊"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="tap text-[14px] font-semibold text-[#888]"
+            >
+              Закрити
+            </button>
+          </div>
         </div>
 
         <div className="px-[22px] pb-4">
@@ -406,6 +429,7 @@ export function RandomMixSheet({
                       target={target}
                       durationMs={SPIN_DURATIONS_MS[i] ?? 3500}
                       rollKey={rollKey}
+                      reelIndex={i}
                       onLand={() => setLandedCount((c) => c + 1)}
                     />
                   ))}
