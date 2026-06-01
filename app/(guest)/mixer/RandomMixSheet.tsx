@@ -17,8 +17,7 @@ import {
 
 const OVERPACK_CHANCE = 0.05;
 const COOL_CHANCE = 0.25;
-// TODO: lower this back to ~0.01 after the jackpot reveal is QA'd.
-const JACKPOT_CHANCE = 1;
+const JACKPOT_CHANCE = 0.01;
 const CELL_H = 104;
 const STRIP_LENGTH = 32;
 // Stagger reel stop times so the eye reads "drumroll" — left first, right last.
