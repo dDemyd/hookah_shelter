@@ -561,6 +561,7 @@ function PickerSheet({
 		offset: number;
 	} | null>(null);
 	const filtered = catalog.filter((item) => {
+		if (!item.inStock) return false;
 		if (cat !== "all" && item.cat !== cat) return false;
 		if (query.trim()) {
 			const q = query.toLowerCase();
