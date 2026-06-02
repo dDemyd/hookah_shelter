@@ -79,7 +79,7 @@ export function MixCard({ mix }: { mix: PresetMix }) {
           {mix.name}
         </div>
         <div
-          className="mb-3.5 h-[34px] text-[12.5px] leading-[1.35]"
+          className="mb-3.5 line-clamp-2 h-[34px] overflow-hidden text-[12.5px] leading-[1.35]"
           style={{ color: "rgba(255,255,255,0.7)" }}
         >
           {mix.desc}
